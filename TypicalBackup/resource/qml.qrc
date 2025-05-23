@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/qt/qml/typicalbackup">
+        <file>main.qml</file>
+        <file>Icon/TypicalBackup.ico</file>
+    </qresource>
+</RCC>

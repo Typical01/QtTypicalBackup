@@ -1,0 +1,16 @@
+.vs/
+build/*
+bin/*
+out/*
+
+./*.bat
+
+*.aps
+*.sln
+*.exp
+*.pdb
+*.obj
+*.recipe
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
