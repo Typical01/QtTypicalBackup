@@ -1,13 +1,15 @@
 ﻿import QtQuick 2.12
-import QtQuick.Window 2.2
 import QtQuick.Controls 2.12  // 必须导入此模块
 import QtQuick.Layouts 1.12
 
-import com.example.shell 1.0
+import com.example.backup 1.0
+import com.example.group 1.0
 import com.example.settings 1.0
+import "qrc:/qt/qml/typicalbackup/resource"
 
 
-Window {
+
+ApplicationWindow {
     id: rootWindow
     visible: true
     width: 500
@@ -18,8 +20,72 @@ Window {
     // 可选：设置最小尺寸
     minimumWidth: 500
     minimumHeight: 800
-    //title: settings.applicationWindowTitleName
-    flags: Qt.Dialog | Qt.WindowMinMaxButtonsHint | Qt.WindowSystemMenuHint | Qt.WindowTitleHint
+    title: settings.applicationWindowTitleName
+
+    menuBar: MenuBar {
+        font.family: "Microsoft YaHei"
+        font.pixelSize: 14
+
+        // 文件菜单
+        Menu {
+            title: "文件"
+
+//            MenuItem {
+//                text: "新建(&N)"
+//                onTriggered: console.log("新建被点击")
+//            }
+
+//            MenuItem {
+//                text: "打开(&O)"
+//                onTriggered: console.log("打开被点击")
+//            }
+
+            //MenuSeparator {}
+
+            MenuItem {
+                text: "退出"
+                onTriggered: Qt.quit()
+            }
+        }
+
+        Menu {
+            title: "设置"
+
+            MenuItem {
+                text: "首选项"
+                onTriggered: {
+                    var component = Qt.createComponent("settingWindow.qml")
+                    if (component.status === Component.Ready) {
+                        var dialog = component.createObject(rootWindow)
+                        dialog.open()
+                    } else {
+                        console.error("Error loading settings:", component.errorString())
+                    }
+                }
+            }
+        }
+
+        Menu {
+            title: "帮助"
+
+            MenuItem {
+                text: "关于"
+                onTriggered: {
+                    settings.help()
+                }
+            }
+        }
+    }
+
+    // 使用 Loader 动态加载 settingWindow.qml
+    Loader {
+        id: settingsWindow
+        source: "settingWindow.qml"
+        onLoaded: {
+            // 设置加载完成后的回调
+            console.log("设置窗口已加载")
+        }
+    }
 
     function delay(duration) {
         var start = new Date().getTime()
@@ -33,39 +99,7 @@ Window {
         anchors.fill: parent
         spacing: 2  // 垂直间距
 
-        // 区域: 一般设置
-        ColumnLayout {
-            height: 80 
-            Layout.fillWidth: true  // 添加此行
-            spacing: 5  // 垂直间距
-            
-            Text {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignLeft
-                font.bold: true
-                font.pointSize: 12
-                text: "基础设置"
-                font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
-            }
-
-            RowLayout {
-                implicitWidth: 500; implicitHeight: 50 
-                Layout.fillWidth: true
-                Layout.leftMargin: 16  // 设置偏移量
-                spacing: 5  // 水平间距
-                
-                CheckBox {
-                    id: settingOption
-                    text: "开机自启动"   // 单选框文本
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"
-                    checked: settings.bIsSelfAutoStarting
-                    onToggled: settings.bIsSelfAutoStarting = checked
-                }
-            }
-        }
-
-        // ListView: ShellConfigItem 
+        // ListView: backup
         ColumnLayout {
             height: 380 
             Layout.fillWidth: true  // 添加此行
@@ -78,12 +112,12 @@ Window {
                     horizontalAlignment: Text.AlignLeft
                     font.bold: true
                     font.pointSize: 12
-                    text: "Shell项"
+                    text: "备份项"
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
                 Button {
-                    id: buttonShellConfigAdd
+                    id: buttonBackupAdd
                     text: "添加"
                     font.family: "Microsoft YaHei"
                     font.pointSize: 14
@@ -92,38 +126,28 @@ Window {
                     Layout.preferredWidth: 80
 
                     onClicked: {
-                        settings.logDebug("qml: Clicked: buttonShellConfigAdd")
+                        settings.logDebug("qml: Clicked: buttonBackupAdd")
 
-                        settings.shellConfigModel.addShellConfig(
-                            "新项",
-                            "打开文件",
+                        settings.backupModel.addBackup(
+                            "新备份项",
+                            "",
                             "",
                             "",
                             true,
-                            true
+                            true,
+                            -1
                         )
-                        settings.shellConfigModel.forceLayout()
-                        listViewShellConfig.currentIndex = listViewShellConfig.model.getRowCount() - 1
-
-//                        settings.shellConfigListAppend(
-//                            "新项",
-//                            "打开文件",
-//                            "",
-//                            "",
-//                            true,
-//                            true
-//                        )
-//                        listViewShellConfig.model = []; // 清空模型
-//                        listViewShellConfig.model = settings.getShellConfigList(); // 重新绑定模型
+                        settings.backupModel.forceLayout()
+                        listViewBackup.currentIndex = listViewBackup.model.getRowCount() - 1
                     }
                     onPressed: {
-                        buttonShellConfigAddBackground.color = "black"
+                        buttonBackupAddBackground.color = "black"
                     }
                     onReleased: {
-                        buttonShellConfigAddBackground.color = "white"
+                        buttonBackupAddBackground.color = "white"
                     }
                     background: Rectangle {
-                                id: buttonShellConfigAddBackground
+                                id: buttonBackupAddBackground
                                 color: "white"
                                 border.color: "black"
                                 border.width: 1
@@ -132,7 +156,7 @@ Window {
                 }
 
                 Button {
-                    id: buttonShellConfigDel
+                    id: buttonBackupDel
                     text: "删除"
                     font.family: "Microsoft YaHei"
                     font.pointSize: 14
@@ -141,31 +165,27 @@ Window {
                     Layout.preferredWidth: 80
 
                     onClicked: {
-                        settings.logDebug("qml: Clicked: buttonShellConfigDel")
-                        var tempIndex = listViewShellConfig.currentIndex
-                        if (tempIndex === listViewShellConfig.model.getRowCount() - 1) {
-                            settings.shellConfigModel.removeShellConfig(tempIndex)
-                            settings.shellConfigModel.forceLayout()
-                            listViewShellConfig.currentIndex = tempIndex - 1
+                        settings.logDebug("qml: Clicked: buttonBackupDel")
+                        var tempIndex = listViewBackup.currentIndex
+                        if (tempIndex === listViewBackup.model.getRowCount() - 1) {
+                            settings.backupModel.removeBackup(tempIndex)
+                            settings.backupModel.forceLayout()
+                            listViewBackup.currentIndex = tempIndex - 1
                         }
                         else {
-                            settings.shellConfigModel.removeShellConfig(tempIndex)
-                            settings.shellConfigModel.forceLayout()
-                            listViewShellConfig.currentIndex = tempIndex
+                            settings.backupModel.removeBackup(tempIndex)
+                            settings.backupModel.forceLayout()
+                            listViewBackup.currentIndex = tempIndex
                         }
-
-//                        settings.shellConfigListRemove(listViewShellConfig.currentIndex)
-//                        listViewShellConfig.model = []; // 清空模型
-//                        listViewShellConfig.model = settings.getShellConfigList(); // 重新绑定模型
                     }
                     onPressed: {
-                        buttonShellConfigDelBackground.color = "black"
+                        buttonBackupDelBackground.color = "black"
                     }
                     onReleased: {
-                        buttonShellConfigDelBackground.color = "red"
+                        buttonBackupDelBackground.color = "red"
                     }
                     background: Rectangle {
-                                id: buttonShellConfigDelBackground
+                                id: buttonBackupDelBackground
                                 color: "red"
                                 border.color: "black"
                                 border.width: 1
@@ -182,7 +202,7 @@ Window {
             }
 
             ListView {
-                id: listViewShellConfig
+                id: listViewBackup
 
                 height: 400 
 
@@ -192,56 +212,40 @@ Window {
 
                 focus: true
 
-                //model: settings.getShellConfigList()
-                model: settings.shellConfigModel
+                //model: settings.getBackupList()
+                model: settings.backupModel
 
                 Component.onCompleted: {
-                    settings.logDebug("qml: ShellConfigList: onCompleted")
-//                    var shellConfigListSize = settings.getShellConfigList().length
-//                    if (shellConfigListSize > 1000) {
-//                        settings.logDebug("qml: ShellConfigList: ShellConfigList大小[" + shellConfigListSize +"]超出范围[1000]!")
+                    settings.logDebug("qml: BackupList: onCompleted")
+//                    var bakcupListSize = settings.getBackupList().length
+//                    if (bakcupListSize > 1000) {
+//                        settings.logDebug("qml: BackupList: BackupList大小[" + bakcupListSize +"]超出范围[1000]!")
 //                        return
 //                    }
                 }
 
-//                onCurrentIndexChanged: {
-//                    var ItemIndex = listViewShellConfig.currentIndex
-//                    if (ItemIndex != -1) {
-//                        shellConfigItem.visible = true
-//                    }
-//                    else {
-//                        shellConfigItem.visible = false
-//                        return
-//                    }
-
-//                    var currentItem = settings.getShellConfigList()[ItemIndex]
-//                    textFieldOperateName.text = currentItem.getOperateName()
-//                    comboBoxMode.currentIndex = comboBoxMode.find(currentItem.getShellOperate())
-//                    textFieldFile.text = currentItem.getFile()
-//                    textFieldArg.text = currentItem.getArg()
-//                    checkBoxShowWindow.checked = currentItem.getWindowShow() === true
-//                    checkBoxMenuButton.checked = currentItem.getMenuButton() === true
-//                }
                 onCurrentIndexChanged: {
-                    var currentItem = listViewShellConfig.model.get(listViewShellConfig.currentIndex)
+                    var currentItem = listViewBackup.model.get(listViewBackup.currentIndex)
                     if (currentItem) {
                         textFieldOperateName.text = currentItem.m_operateName
-                        comboBoxMode.currentIndex = comboBoxMode.find(currentItem.m_shellOperate)
-                        textFieldFile.text = currentItem.m_file
-                        textFieldArg.text = currentItem.m_arg
-                        checkBoxShowWindow.checked = currentItem.m_windowShow
-                        checkBoxMenuButton.checked = currentItem.m_menuButton
+                        textFieldSourceFile.text = currentItem.m_sourceFile
+                        textFieldDestinationPath.text = currentItem.m_destinationPath
+                        textFieldErrorMessage.text = currentItem.m_errorMessage
+                        //comboBoxMode.currentIndex = comboBoxMode.find(currentItem.m_shellOperate)
+                        checkBoxStartBackup.checked = currentItem.m_startBackup
+                        checkBoxSetPermissions.checked = currentItem.m_setPermissions
+                        progressBarBackupItemTask.value = currentItem.m_progress
 
-                        shellConfigItem.visible = true
+                        backup.visible = true
 
                     } else {
-                        shellConfigItem.visible = false
+                        backup.visible = false
                     }
                 }
 
                 delegate: Rectangle {
-                    width: listViewShellConfig.width
-                    height: 40
+                    width: listViewBackup.width
+                    height: 50
                     color: ListView.isCurrentItem ? "#d0eaff" : "white"
                     border.color: "#cccccc"
                     border.width: 1
@@ -250,43 +254,50 @@ Window {
                         spacing: 10
                         anchors.centerIn: parent
 
-                        Image {
-                            width: 32
-                            height: 32
-                            source: {
-                                    switch (model.shellOperate) {
-                                        case "open":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/File.ico";
-                                        case "explore":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/Folder.ico";
-                                        case "runas":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/Administrator.ico";
-                                        case "打开文件":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/File.ico";
-                                        case "打开文件夹":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/Folder.ico";
-                                        case "管理员运行":
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/Administrator.ico";
-                                        default:
-                                            settings.logDebug("图标: " + model.m_shellOperate)
-                                            return "qrc:/qt/qml/typicaltools/resource/Icon/DeerAndPipe.ico";
-                                    }
-                                }
-                        }
-
                         Text {
-                            //text: settings.getShellConfigList()[index].getOperateName()
-                            text: model.operateName
+                            //text: settings.getBackupList()[listViewBackup.currentIndex].getOperateName()
+                            text: model.getOperateName()
                             font.pointSize: 10
                             font.family: "Microsoft YaHei"
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                        }
+
+                        Button {
+                            id: buttonBackupItem
+                            text: "备份"
+                            font.family: "Microsoft YaHei"
+                            font.pointSize: 14
+                            font.bold: true
+                            Layout.preferredHeight: 34
+                            Layout.preferredWidth: 80
+
+                            onClicked: {
+                                settings.operateCopyFile(model)
+                            }
+                            onPressed: {
+                                buttonBackupItemBackground.color = "black"
+                            }
+                            onReleased: {
+                                buttonBackupItemBackground.color = "white"
+                            }
+                            background: Rectangle {
+                                        id: buttonBackupItemBackground
+                                        color: "white"
+                                        border.color: "black"
+                                        border.width: 1
+                                        radius: 4
+                            }
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            settings.logDebug("qml: ShellConfigList currentIndex: " + index)
-                            listViewShellConfig.currentIndex = index
+                            settings.logDebug("qml: BackupList currentIndex: " + listViewBackup.currentIndex)
+                            listViewBackup.currentIndex = listViewBackup.currentIndex
                         }
                     }
                 }
@@ -297,24 +308,24 @@ Window {
 
                 section {
                     //property: "modelData.m_menuButton"
-                    property: "menuButton"
+                    property: "startBackup"
                     criteria: ViewSection.FullString
-                    delegate: sectionShellConfig
+                    delegate: sectionBackup
                 }
             }
         }
 
         Component {
-            id: sectionShellConfig
+            id: sectionBackup
             Rectangle{
-                width: listViewShellConfig.width
+                width: listViewBackup.width
                 color: "#dddeee"
                 height: 24
                 Text {
                     anchors.fill: parent
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
-                    text: section === "true" ? "菜单项" : "启动项"
+                    text: section === "true" ? "备份项" : "启动时备份项"
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     font.bold: true
@@ -329,9 +340,9 @@ Window {
             color: "#cccccc"
         }
 
-        // 配置: ShellConfigItem 
+        // 配置: backup
         ColumnLayout {
-            id: shellConfigItem
+            id: backup
             visible: false
             height: 180 
             Layout.fillWidth: true  // 添加此行
@@ -342,7 +353,7 @@ Window {
                 horizontalAlignment: Text.AlignLeft    
                 font.bold: true
                 font.pointSize: 12
-                text: "Shell项配置"
+                text: "备份项配置"
                 font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
             }
 
@@ -361,28 +372,17 @@ Window {
                 // 文件: 文本编辑框
                 TextField {
                     id: textFieldOperateName
-                    placeholderText: "例: 打开cmd.exe"
+                    placeholderText: "例: 备份D:/Test到F盘"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     Layout.preferredWidth: 400
                     selectByMouse: true  // 启用鼠标选区
                     text: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item && item.m_operateName !== undefined) {
-                                return item.m_operateName;
-                            }
-                        }
-                        return "";
+                        return model.m_operateName;
                     }
-                    //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_operateName : ""
+
                     onTextChanged:  {
-                        if (listViewShellConfig.currentIndex !== -1) {
-                            settings.shellConfigModel.get(listViewShellConfig.currentIndex).m_operateName = text
-                            settings.shellConfigModel.forceLayout()
-                            //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_operateName = text
-                        }
+                        model.m_operateName = text
                     }
                 }
             }
@@ -396,34 +396,24 @@ Window {
                     horizontalAlignment: Text.AlignRight    
                     font.bold: false
                     font.pointSize: 10
-                    text: "文件路径:"
+                    text: "源文件(夹):"
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
                 // 文件: 文本编辑框
                 TextField {
-                    id: textFieldFile
-                    placeholderText: "例: C:/Windows/System32/cmd.exe"
+                    id: textFieldSourceFile
+                    placeholderText: "例: D:/Test"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     Layout.preferredWidth: 400
                     selectByMouse: true  // 启用鼠标选区
                     text: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item && item.m_file !== undefined) {
-                                return item.m_file;
-                            }
-                        }
-                        return "";
+                        return model.m_sourceFile;
                     }
-                    //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_file : ""
+
                     onTextChanged: {
-                        if (listViewShellConfig.currentIndex !== -1) {
-                           settings.shellConfigModel.get(listViewShellConfig.currentIndex).m_file = text
-                            //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_file = text
-                        }
+                        model.m_sourceFile = text
                     }
                 }
             }
@@ -436,84 +426,127 @@ Window {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight    
                     font.bold: false
-                    text: "参数:"
+                    text: "目的地路径:"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
                 // 参数: 文本编辑框
                 TextField {
-                    id: textFieldArg
+                    id: textFieldDestinationPath
                     placeholderText: "例: -Test -K -C"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     Layout.preferredWidth: 400
                     selectByMouse: true  // 启用鼠标选区
                     text: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item && item.m_arg !== undefined) {
-                                return item.m_arg;
-                            }
-                        }
-                        return "";
+                        return model.m_destinationPath;
                     }
-                    //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_arg : ""
                     onTextChanged: {
-                        if (listViewShellConfig.currentIndex !== -1) {
-                           settings.shellConfigModel.get(listViewShellConfig.currentIndex).m_arg = text
-                            //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_arg = text
-                        }
+                        model.m_destinationPath = text
                     }
                 }
             }
 
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
+                visible: {
+                    return model.m_errorMessage
+                }
 
                 Text {
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight    
+                    horizontalAlignment: Text.AlignRight
                     font.bold: false
+                    text: "错误信息:"
                     font.pointSize: 10
-                    text: "模式:"
+
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
-                // 模式: 下拉列表框
-                ComboBox {
-                    id: comboBoxMode
-                    model: ["打开文件", "打开文件夹", "管理员运行"]
-                    font.family: "Microsoft YaHei"
+                // 参数: 文本编辑框
+                TextField {
+                    id: textFieldErrorMessage
+                    placeholderText: "例: -Test -K -C"
                     font.pointSize: 10
+                    font.family: "Microsoft YaHei"
                     Layout.preferredWidth: 400
-
-                    delegate: ItemDelegate {
-                        width: comboBoxMode.width
-                        contentItem: Text {
-                            text: modelData
-                            font.family: "Microsoft YaHei"
-                            font.pointSize: 12
-                            font.bold: true
-                            color: "#000000"
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                    selectByMouse: true  // 启用鼠标选区
+                    text: {
+                        return model.m_errorMessage;
                     }
+                    onTextChanged: {
+                        model.m_errorMessage = text
+                    }
+                }
+            }
 
-                    onActivated: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item) {
-                                item.setShellOperate(currentText);
-                            }
-                        }
+//            RowLayout {
+//                Layout.fillWidth: true
+//                spacing: 10
 
-                        settings.shellConfigModel.forceLayout()
-                        //settings.getShellConfigList()[listViewShellConfig.currentIndex].setShellOperate(currentText);
+//                Text {
+//                    Layout.fillWidth: true
+//                    horizontalAlignment: Text.AlignRight
+//                    font.bold: false
+//                    font.pointSize: 10
+//                    text: "模式:"
+//                    font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
+//                }
+
+//                // 模式: 下拉列表框
+//                ComboBox {
+//                    id: comboBoxMode
+//                    model: ["打开文件", "打开文件夹", "管理员运行"]
+//                    font.family: "Microsoft YaHei"
+//                    font.pointSize: 10
+//                    Layout.preferredWidth: 400
+
+//                    delegate: ItemDelegate {
+//                        width: comboBoxMode.width
+//                        contentItem: Text {
+//                            text: modelData
+//                            font.family: "Microsoft YaHei"
+//                            font.pointSize: 12
+//                            font.bold: true
+//                            color: "#000000"
+//                            elide: Text.ElideRight
+//                            verticalAlignment: Text.AlignVCenter
+//                        }
+//                    }
+
+//                    onActivated: {
+//
+//                        if (listViewBackup.currentIndex !== -1) {
+//                            var item = settings.backupModel.get(listViewBackup.currentIndex);
+//                            if (item) {
+//                                item.setShellOperate(currentText);
+//                            }
+//                        }
+
+//                        settings.backupModel.forceLayout()
+//                    }
+//                }
+//            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                // 启动时备份: 复选框
+                CheckBox {
+                    id: checkBoxStartBackup
+                    Layout.leftMargin: 94  // 设置偏移量
+                    text: "启动时备份"
+                    font.pointSize: 10
+                    font.family: "Microsoft YaHei"
+                    checked: {
+                        return model.m_startBackup
+                    }
+                    onToggled: {
+                        model.m_startBackup = checked
                     }
                 }
             }
@@ -522,29 +555,19 @@ Window {
                 Layout.fillWidth: true
                 spacing: 10
 
-                // 显示窗口: 复选框
+                // 设置权限: 复选框
                 CheckBox {
-                    id: checkBoxShowWindow
+                    id: checkBoxSetPermissions
                     Layout.leftMargin: 94  // 设置偏移量
-                    text: "显示窗口"
+                    text: "设置权限"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     checked: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item) {
-                                return item.m_windowShow;
-                            }
-                        }
-                        return false;
+                        return model.m_setPermissions
                     }
-                         //settings.getShellConfigList()[listViewShellConfig.currentIndex].m_windowShow : true
                     onToggled: {
-                        if (listViewShellConfig.currentIndex !== -1) {
-                            settings.shellConfigModel.get(listViewShellConfig.currentIndex).m_windowShow = checked
-//                            settings.getShellConfigList()[listViewShellConfig.currentIndex].m_windowShow = checked
-                        }
+                        model.m_setPermissions = checked
+                        settings.backupModel.forceLayout()
                     }
                 }
             }
@@ -553,30 +576,28 @@ Window {
                 Layout.fillWidth: true
                 spacing: 10
 
-                // 菜单按钮: 复选框
-                CheckBox {
-                    id: checkBoxMenuButton
-                    Layout.leftMargin: 94  // 设置偏移量
-                    text: "菜单按钮"
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"
-                    checked: {
-                        var index = listViewShellConfig.currentIndex;
-                        if (index !== -1) {
-                            var item = settings.shellConfigModel.get(index);
-                            if (item) {
-                                return item.m_menuButton;
-                            }
-                        }
-                        return false;
+                ProgressBar {
+                    id: progressBarBackupItemTask
+                    width: 300
+                    from: 0
+                    to: 100
+                    value: model.m_progress
+                    visible: {  // 当进度值为 -1 时隐藏进度条
+                        model.m_progress >= 0
                     }
-                    onToggled: {
-                        if (listViewShellConfig.currentIndex !== -1) {
-                            settings.shellConfigModel.get(listViewShellConfig.currentIndex).m_menuButton = checked
-                            settings.shellConfigModel.forceLayout()
-//                    checked: settings.getShellConfigList()[listViewShellConfig.currentIndex].m_menuButton
-//                    onToggled: settings.getShellConfigList()[listViewShellConfig.currentIndex].m_menuButton = checked
-                        }
+
+                    background: Rectangle {
+                        color: "white"
+                        border.color: "black"
+                        border.width: 1
+                        radius: 5
+                    }
+
+                    contentItem: Rectangle {
+                        color: "green"
+                        radius: 5
+                        width: progressBarBackupItemTask.visualPosition * progressBarBackupItemTask.width
+                        height: progressBarBackupItemTask.height
                     }
                 }
             }
@@ -604,17 +625,13 @@ Window {
 
                     onClicked: {
                         settings.logDebug("qml: Clicked: buttonSettingSave")
-                        settings.shellConfigModel.forceLayout(true)
-                        listViewShellConfig.currentIndex = -1
+                        settings.backupModel.forceLayout(true)
+                        listViewBackup.currentIndex = -1
 
                         settings.updateConfig()
                         settings.saveData();
-                        settings.loadShellConfig(true)
+                        settings.loadBackup(true)
                         settings.loadToolsMenu()
-
-
-//                        listViewShellConfig.model = []; // 清空模型
-//                        listViewShellConfig.model = settings.getShellConfigList(); // 重新绑定模型
                     }
                     onPressed: {
                         buttonSettingSaveBackground.color = "black"
@@ -642,7 +659,7 @@ Window {
 
                     onClicked: {
                         settings.logDebug("qml: Clicked: buttonSettingQuit")
-                        close()
+                        settings.quit()
                     }
                     onPressed: {
                         buttonSettingQuitBackground.color = "black"

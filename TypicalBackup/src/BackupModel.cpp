@@ -1,0 +1,103 @@
+#include "BackupModel.h"
+
+
+
+
+BackupModel::BackupModel(QObject* parent)
+    : QAbstractListModel(parent)
+{
+}
+
+int BackupModel::rowCount(const QModelIndex& parent) const
+{
+    Q_UNUSED(parent);
+    return m_data.count();
+}
+
+QVariant BackupModel::data(const QModelIndex& index, int role) const
+{
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_data.count())
+        return QVariant();
+
+    Backup* backup = m_data.at(index.row());
+    switch (role) {
+    case OperateNameRole:
+        return backup->getOperateName();
+    case SourceFileRole:
+        return backup->getSourceFile();
+    case DestinationPathRole:
+        return backup->getDestinationPath();
+    case StartBackupRole:
+        return backup->getStartBackup();
+    case SetPermissionsRole:
+        return backup->getSetPermissions();
+    case ProgressRole:
+        return backup->getProgress();
+    case SourceFileListRole:
+        return QVariant::fromValue(backup->getSourceFileList());
+    case DestinationPathListRole:
+        return QVariant::fromValue(backup->getDestinationPathList());
+    default:
+        return QVariant();
+    }
+}
+
+Q_INVOKABLE void BackupModel::forceLayout(bool bIsSort)
+{
+    if (bIsSort) {
+        sort();
+    }
+    // 实现逻辑，例如发出 dataChanged 信号以刷新视图
+    emit dataChanged(index(0, 0), index(rowCount() - 1, 0));
+}
+
+void BackupModel::sort()
+{
+    std::sort(m_data.begin(), m_data.end());
+    std::partition(m_data.begin(), m_data.end(), [](Backup* backup) {
+        return !backup->getStartBackup();
+        }
+    );
+}
+
+void BackupModel::addBackup(Backup* backup)
+{
+    beginInsertRows(QModelIndex(), m_data.count(), m_data.count());
+    m_data.append(backup);
+    sort();
+    endInsertRows();
+}
+
+void BackupModel::addBackup(const QString& operateName, const QString& sourceFile, const QString& destinationPath,
+    const bool& startBackup, const bool& setPermissions, const int32_t& progress)
+{
+    beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
+    Backup* backup = new Backup(operateName, sourceFile, destinationPath, startBackup, setPermissions, progress);
+    m_data.append(backup);
+    sort();
+    endInsertRows();
+}
+
+bool BackupModel::removeBackup(int index) {
+    if (index < 0 || index >= m_data.count())
+        return false;
+
+    beginRemoveRows(QModelIndex(), index, index);
+    delete m_data.at(index); // 如果您拥有对象的所有权
+    m_data.removeAt(index);
+    sort();
+    endRemoveRows();
+
+    return true;
+}
+
+QHash<int, QByteArray> BackupModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[OperateNameRole] = "operateName";
+    roles[SourceFileRole] = "sourceFile";
+    roles[DestinationPathRole] = "destinationPath";
+    roles[StartBackupRole] = "startBackup";
+    roles[SetPermissionsRole] = "setPermissions";
+    return roles;
+}

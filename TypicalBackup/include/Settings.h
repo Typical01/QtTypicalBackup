@@ -4,11 +4,12 @@
 
 
 #include <QApplication>
+#include <QGuiApplication>
 #include <QCoreApplication>
-#include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSystemTrayIcon>
-#include <QMenu>
+
+#include <QQmlApplicationEngine>
 
 #include <QObject>
 #include <QDebug>
@@ -17,6 +18,7 @@
 
 #include <QSharedMemory>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QAbstractListModel>
 
 #include <QFile>
@@ -24,9 +26,15 @@
 #include <QDateTime>
 #include <QDebug>
 
+#include <QThread>
+#include <QMetaObject>
+
+
 
 #include <Backup.h>
-#include <ShellConfigModel.h>
+#include <Group.h>
+#include <BackupModel.h>
+#include <GroupModel.h>
 
 
 #include <TypicalTool/Tool.h>
@@ -42,15 +50,17 @@ namespace QtTypicalTool {
         Q_OBJECT
     
         Q_PROPERTY(bool bIsSelfAutoStarting READ getIsSelfAutoStarting WRITE setIsSelfAutoStarting NOTIFY isSelfAutoStartingChanged)
-        Q_PROPERTY(ShellConfigModel* backupModel READ getShellConfigModel WRITE setShellConfigModel NOTIFY backupModelChanged)
+        Q_PROPERTY(bool bIsClickSaveButton READ getIsClickSaveButton WRITE setIsClickSaveButton NOTIFY isClickSaveButtonChanged)
+        Q_PROPERTY(BackupModel* backupModel READ getShellConfigModel WRITE setShellConfigModel NOTIFY backupModelChanged)
+        Q_PROPERTY(QString applicationWindowTitleName READ getApplicationWindowTitleName WRITE setApplicationWindowTitleName NOTIFY applicationWindowTitleNameChanged)
 
     public:
         Settings(QObject* parent = nullptr);
         ~Settings();
 
     public:
-        QApplication* Application;
-        QQmlApplicationEngine* QmlApplicationEngine;
+        QApplication* application;
+        QQmlApplicationEngine* qmlApplicationEngine;
 
     public:
         QString applicationName;
@@ -62,29 +72,20 @@ namespace QtTypicalTool {
         JsonManage jsonManage;
         FileSystem fileSystem;
 
-        ShellConfigModel* backupModel;
-        std::vector<Backup*> ExeRunItem; //程序启动项
-        std::map<int32_t, Backup*> ExeMenuItem; //程序菜单项
+        BackupModel* backupModel;
 
-        bool bIsSelfAutoStarting = false;
-        inline static int32_t IntId = 1000;
-
-    public:
-        int32_t GetIntId();
-        //void ShellOperate(QMenu* _Menu, QVariantList& _ShellConfig);
-        void ShellOperate(QMenu* _Menu, ShellConfigModel* _backupModel);
-        void ExeRunItemShell();
-        void ExeMenuItemShell(int32_t _MenuItemID);
-        void ExecuteAnalyze(QString OperateName, QString ShellOperate, QString ShellFile, QString ShellArg = TEXT(""), bool WindowShow = true);
+        std::atomic<bool> bIsErrorMessage = false; // 是否有错误
+        bool bIsSelfAutoStarting = false; // 开机自启动
+        bool bIsClickSaveButton = false; // 是否点击了[保存]按钮
+        bool bAutoStartingToQuitGame = false; // 自启动后退出
 
     public:
-        void Initialize(QApplication* _Application, const QString& _applicationName, const QString& _applicationDirPath);
-
+        void Initialize(QApplication* _application, const QString& _applicationName, const QString& _applicationDirPath);
         static void customMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 
     public:
-        Q_INVOKABLE ShellConfigModel* getShellConfigModel() const { return backupModel; }
-        Q_INVOKABLE void setShellConfigModel(ShellConfigModel* model) {
+        Q_INVOKABLE BackupModel* getShellConfigModel() const { return backupModel; }
+        Q_INVOKABLE void setShellConfigModel(BackupModel* model) {
             if (backupModel != model) {
                 backupModel->setData(*model);
                 emit backupModelChanged();
@@ -97,128 +98,52 @@ namespace QtTypicalTool {
                 emit isSelfAutoStartingChanged();
             }
         }
+        Q_INVOKABLE bool getIsClickSaveButton() const { return bIsClickSaveButton; }
+        Q_INVOKABLE void setIsClickSaveButton(const bool& IsClickSaveButton) {
+            if (bIsClickSaveButton != IsClickSaveButton) {
+                bIsClickSaveButton = IsClickSaveButton;
+                emit isClickSaveButtonChanged();
+            }
+        }
+        Q_INVOKABLE QString getApplicationWindowTitleName() const { return applicationWindowTitleName; }
+        Q_INVOKABLE void setApplicationWindowTitleName(const QString& _applicationWindowTitleName) {
+            if (applicationWindowTitleName != _applicationWindowTitleName) {
+                applicationWindowTitleName = _applicationWindowTitleName;
+                emit applicationWindowTitleNameChanged();
+            }
+        }
 
     signals:
-        void backupListChanged();
         void backupModelChanged();
         void isSelfAutoStartingChanged();
+        void isClickSaveButtonChanged();
+        void applicationWindowTitleNameChanged();
 
     public slots:
-
-        void loadBaseConfig();
+        //数据加载/保存
+        void loadData();
+        void saveData();
         void updateConfig();
-        void loadShellConfig(bool reLoad = false);
-        void loadToolsMenu();
 
-        void logDebug(const QString& message)
-        {
-            qDebug() << message;
-        }
+        //其他
+        void logDebug(const QString& message);
+        void help();
+        void quit();
+        void output();
 
-        void test() {
-            logDebug(Printf(TEXT("test: Printf!")).str().c_str());
-        }
+        //qml
+        void openMainWindow();
+        void onLoadEngine();
+        void offLoadEngine();
 
-        void help() {
-            QMessageBox::warning(nullptr, "TypicalBackup: 帮助", 
-                "作者: Typical01\nGithub: https://github.com/Typical01\n\n本程序由Qt框架制作.\nQt: https://download.qt.io/archive/qt/5.12/5.12.0/single/qt-everywhere-src-5.12.0.zip");
-        }
-
-        void openSettingWindow() {
-            offLoadEngine();
-            if (QmlApplicationEngine) {
-                QmlApplicationEngine->load(QUrl(QStringLiteral("qrc:/qt/qml/typicalbackup/resource/main.qml")));
-
-                if (QmlApplicationEngine->rootObjects().isEmpty()) {
-                    QMessageBox::critical(nullptr, "TypicalBackup", "加载 QML 文件失败！");
-                    delete QmlApplicationEngine;
-                    QmlApplicationEngine = nullptr;
-                }
-            }
-        }
-
-        void onLoadEngine() {
-            QmlApplicationEngine = new QQmlApplicationEngine();
-            QmlApplicationEngine->rootContext()->setContextProperty("settings", this);
-        }
-
-        void offLoadEngine() {
-            if (QmlApplicationEngine) {
-                for (QObject* object : QmlApplicationEngine->rootObjects()) {
-                    QWindow* window = qobject_cast<QWindow*>(object);
-                    if (window) {
-                        window->close();
-                    }
-                }
-
-                if (!QmlApplicationEngine->rootObjects().isEmpty()) {
-                    QmlApplicationEngine->rootObjects().first()->deleteLater();
-                }
-            }
-        }
-
-        void saveData() {
-            qDebug() << "saveData: QmlList[listViewShellConfig] Item Sun: " << backupModel->rowCount();
-            rootConfig.clear();
-
-            Json::Value jsonBase;
-            jsonBase["注册表开机自启动"] = bIsSelfAutoStarting;
-            rootConfig[TEXT("基本设置")] = jsonBase;
-
-#ifdef QVariantList
-            for (int index = 0; index < backupList.size(); ++index) {
-                qDebug() << "saveData: QmlList[listViewShellConfig] Item Count: " << index;
-
-                // 处理获取到的数据
-                Backup* config = qvariant_cast<Backup*>(backupList[index]); 
-
-                Json::Value json;
-                json["模式"] = config->getShellOperate().toStdString();
-                qDebug() << "saveData: shellOperate: " << config->getShellOperate();
-                json["文件"] = config->getFile().toStdString();
-                qDebug() << "saveData: file:         " << config->getFile();
-                json["参数"] = config->getArg().toStdString();
-                qDebug() << "saveData: arg:          " << config->getArg();
-                json["显示窗口"] = config->getWindowShow();
-                qDebug() << "saveData: windowShow:   " << config->getWindowShow();
-                json["菜单按键"] = config->getMenuButton();
-                qDebug() << "saveData: menuButton:   " << config->getMenuButton();
-
-                rootConfig[config->getOperateName().toStdString()] = json;
-                qDebug() << "saveData: operateName:  " << config->getOperateName();
-            }
-#else
-            for (int index = 0; index < backupModel->rowCount(); ++index) {
-                QModelIndex modelIndex = backupModel->index(index, 0);
-                QString operateName = backupModel->data(modelIndex, ShellConfigModel::OperateNameRole).toString();
-                QString shellOperate = backupModel->data(modelIndex, ShellConfigModel::ShellOperateRole).toString();
-                QString file = backupModel->data(modelIndex, ShellConfigModel::FileRole).toString();
-                QString arg = backupModel->data(modelIndex, ShellConfigModel::ArgRole).toString();
-                bool windowShow = backupModel->data(modelIndex, ShellConfigModel::WindowShowRole).toBool();
-                bool menuButton = backupModel->data(modelIndex, ShellConfigModel::MenuButtonRole).toBool();
-
-                Json::Value json;
-                json["模式"] = shellOperate.toStdString();
-                qDebug() << "saveData: shellOperate: " << shellOperate;
-                json["文件"] = file.toStdString();
-                qDebug() << "saveData: file: " << file;
-                json["参数"] = arg.toStdString();
-                qDebug() << "saveData: arg: " << arg;
-                json["显示窗口"] = windowShow;
-                qDebug() << "saveData: windowShow: " << windowShow;
-                json["菜单按键"] = menuButton;
-                qDebug() << "saveData: menuButton: " << menuButton;
-
-                rootConfig[operateName.toStdString()] = json;
-                qDebug() << "saveData: operateName: " << operateName;
-            }
-#endif
-
-            jsonManage.SetJsonValue(rootConfig);
-            jsonManage.ToStreamString();
-            jsonManage.WriteJsonFile();
-            qDebug() << "saveData: 完成!";
-        }
+        //backup
+        void backupItemManage(); //备份项处理
+        bool IsVaildFilePath(const QString& _FilePath);
+        QStringList pathManage(QString& path); //路径处理
+        bool filePathManage(const QString& path, QString& errorMessage); //文件路径处理
+        void operateCopyFile(Backup* backup);
+        void groupManage(); //分组处理
+        void runBackupTask(Backup* backup); //开始备份任务
     };
 }
 

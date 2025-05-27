@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/qt/qml/typicalbackup">
+        <file>resource/main.qml</file>
+        <file>resource/settingWindow.qml</file>
+        <file>resource/Icon/TypicalBackup.ico</file>
+    </qresource>
+</RCC>

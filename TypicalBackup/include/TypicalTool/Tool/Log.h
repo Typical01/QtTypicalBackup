@@ -63,10 +63,19 @@ namespace Typical_Tool
 	public:
 		// 获取格式化后的字符串
 		template<typename T = bool>
-		Tstr str() const { return FormatStr; }
+		Tstr str() const { return FormatStr.c_str(); }
+		template<typename T = bool>
+		const Tchar* cstr() const { return FormatStr.c_str(); }
+		
 		// 自动转换
 		template<typename T = bool>
-		operator Tstr() const { return str(); }
+		operator Tstr () const {
+			return FormatStr;
+		}
+		template<typename T = bool>
+		explicit operator const Tchar* () const {
+			return FormatStr.c_str();
+		}
 	};
 	
 

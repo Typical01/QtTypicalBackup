@@ -5,25 +5,27 @@ Backup::Backup(QObject *parent)
 	: QObject(parent)
 {}
 
-Backup::Backup(const QString & _operateName, const QString & _shellOperate, const QString & _file, 
-	const QString & _arg, const bool& _windowShow, const bool& _menuButton)
+Backup::Backup(const QString & operateName, const QString & sourceFile, const QString & destinationPath,
+	const bool& startBackup, const bool& setPermissions, const int32_t& progress)
 {
-	m_operateName = _operateName;
-	m_shellOperate = _shellOperate;
-	m_file = _file;
-	m_arg = _arg;
-	m_windowShow = _windowShow;
-	m_menuButton = _menuButton;
+	m_operateName = operateName;
+	m_sourceFile = sourceFile;
+	m_destinationPath = destinationPath;
+	m_startBackup = startBackup;
+	m_setPermissions = setPermissions;
+	m_progress = progress;
 }
 
 Backup::Backup(const Backup& otherObject)
 {
 	m_operateName = otherObject.m_operateName;
-	m_shellOperate = otherObject.m_shellOperate;
-	m_file = otherObject.m_file;
-	m_arg = otherObject.m_arg;
-	m_windowShow = otherObject.m_windowShow;
-	m_menuButton = otherObject.m_menuButton;
+	m_sourceFile = otherObject.m_sourceFile;
+	m_destinationPath = otherObject.m_destinationPath;
+	m_startBackup = otherObject.m_startBackup;
+	m_setPermissions = otherObject.m_setPermissions;
+	m_progress = otherObject.m_progress;
+	m_sourceFileList = otherObject.m_sourceFileList;
+	m_destinationPathList = otherObject.m_destinationPathList;
 }
 
 Backup::~Backup()
@@ -32,10 +34,9 @@ Backup::~Backup()
 void Backup::output()
 {
 	qDebug() << "Backup::output: \n" <<
-		"\toperateName: " << m_operateName << "\n" <<
-		"\tshellOperate: " << m_shellOperate << "\n" <<
-		"\tfile		  : " << m_file << "\n" <<
-		"\targ		  : " << m_arg << "\n" <<
-		"\twindowShow  : " << m_windowShow << "\n" <<
-		"\tmenuButton  : " << m_menuButton << "\n";
+		"\t operateName		 :" << m_operateName << "\n" <<
+		"\t sourceFile 		 :" << m_sourceFile << "\n" <<
+		"\t destinationPath  :" << m_destinationPath << "\n" <<
+		"\t startBackup 	 :" << m_startBackup << "\n" <<
+		"\t setPermissions   :" << m_setPermissions << "\n";
 }

@@ -3,17 +3,40 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 
-#include <QApplication>
-#include <QSystemTrayIcon>
 #include <QIcon>
-#include <QMenu>
 #include <QUrl>
+
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 
 #include <QQuickView>
 
 #include "Settings.h"
 
 
+
+
+bool GetCommandLineArgument(QCommandLineParser& parser, const QString& param, QString* paramValue = nullptr)
+{
+    // 移除参数前缀 "-" 或 "--"
+    QString paramName = param;
+    if (param.startsWith("--")) {
+        paramName = param.mid(2);
+    }
+    else if (param.startsWith("-")) {
+        paramName = param.mid(1);
+    }
+
+    // 检查参数是否存在
+    if (parser.isSet(paramName)) {
+        if (paramValue) {
+            *paramValue = parser.value(paramName);
+        }
+        return true;
+    }
+
+    return false;
+}
 
 class SingleInstanceGuard {
 public:
@@ -46,7 +69,6 @@ private:
 };
 
 
-
 int main(int argc, char* argv[])
 {
 #if defined(Q_OS_WIN) && QT_VERSION_CHECK(5, 6, 0) <= QT_VERSION && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -68,12 +90,16 @@ int main(int argc, char* argv[])
     }
 
     QtTypicalTool::Settings* SettingsInstance = new QtTypicalTool::Settings();
+
+    QCommandLineParser parser;
+    parser.process(QCoreApplication::arguments());
+    if (GetCommandLineArgument(parser, "-Auto")) {
+        qDebug() << "CommandLine: 已启用[开机自启动]";
+        SettingsInstance->bAutoStartingToQuitGame = true;
+    }
     SettingsInstance->Initialize(app, QCoreApplication::applicationName(), 
         QCoreApplication::applicationDirPath()); //保存当前程序目录
-
-#ifdef _DEBUG
-    SettingsInstance->openSettingWindow();
-#endif
+    SettingsInstance->openMainWindow();
 
     return app->exec();
 }
