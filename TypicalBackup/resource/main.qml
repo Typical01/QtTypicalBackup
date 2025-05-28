@@ -138,15 +138,12 @@ ApplicationWindow {
                         settings.backupModel.forceLayout()
                         listViewBackup.currentIndex = listViewBackup.model.getRowCount() - 1
                     }
-                    onPressed: {
-                        buttonBackupAddBackground.color = "black"
-                    }
-                    onReleased: {
-                        buttonBackupAddBackground.color = "white"
-                    }
+
                     background: Rectangle {
                                 id: buttonBackupAddBackground
-                                color: buttonBackupAdd.hovered ? "lightgray" : "white"  // 悬停时浅灰色，默认白色
+                                color: !buttonBackupAdd.enabled ? "#aaaaaa" :
+                                       buttonBackupAdd.pressed ? "black" :
+                                       buttonBackupAdd.hovered ? "gray" : "white"
                                 border.color: "gray"
                                 border.width: 1
                                 radius: 4
@@ -180,15 +177,11 @@ ApplicationWindow {
                         }
                     }
 
-                    onPressed: {
-                        buttonBackupDelBackground.color = "black"
-                    }
-                    onReleased: {
-                        buttonBackupDelBackground.color = "white"
-                    }
                     background: Rectangle {
                                 id: buttonBackupDelBackground
-                                color: buttonBackupDel.hovered ? "lightgray" : "white"  // 悬停时浅灰色，默认白色
+                                color: !buttonBackupDel.enabled ? "#aaaaaa" :
+                                       buttonBackupDel.pressed ? "black" :
+                                       buttonBackupDel.hovered ? "gray" : "white"
                                 border.color: "gray"
                                 border.width: 1
                                 radius: 4
@@ -222,21 +215,23 @@ ApplicationWindow {
                 }
 
                 onCurrentIndexChanged: {
-                    var currentItem = listViewBackup.model.get(listViewBackup.currentIndex)
-                    if (currentItem) {
-                        textFieldOperateName.text = currentItem.m_operateName
-                        textFieldSourceFile.text = currentItem.m_sourceFile
-                        textFieldDestinationPath.text = currentItem.m_destinationPath
-                        textFieldErrorMessage.text = currentItem.m_errorMessage
-                        checkBoxStartBackup.checked = currentItem.m_startBackup
-                        checkBoxSetPermissions.checked = currentItem.m_setPermissions
-                        settings.backupModel.forceLayout()
+                    //Qt.callLater(function() {
+                        var currentItem = listViewBackup.model.get(listViewBackup.currentIndex)
+                        if (currentItem) {
+                            textFieldOperateName.text = currentItem.m_operateName
+                            textFieldSourceFile.text = currentItem.m_sourceFile
+                            textFieldDestinationPath.text = currentItem.m_destinationPath
+                            textFieldErrorMessage.text = currentItem.m_errorMessage
+                            checkBoxStartBackup.checked = currentItem.m_startBackup
+                            checkBoxSetPermissions.checked = currentItem.m_setPermissions
+                            //settings.backupModel.forceLayout()
 
-                        backup.visible = true
+                            backup.visible = true
 
-                    } else {
-                        backup.visible = false
-                    }
+                        } else {
+                            backup.visible = false
+                        }
+                    //})
                 }
 
                 delegate: Rectangle {
@@ -303,15 +298,11 @@ ApplicationWindow {
                                     settings.runBackupTask(listViewBackup.model.get(index))
                                 }
 
-                                onPressed: {
-                                    buttonBackupItemBackground.color = "black"
-                                }
-                                onReleased: {
-                                    buttonBackupItemBackground.color = "white"
-                                }
                                 background: Rectangle {
                                             id: buttonBackupItemBackground
-                                            color: buttonBackupItem.hovered ? "lightgray" : "white"  // 悬停时浅灰色，默认白色
+                                            color: !buttonBackupItem.enabled ? "#aaaaaa" :
+                                                   buttonBackupItem.pressed ? "black" :
+                                                   buttonBackupItem.hovered ? "gray" : "white"
                                             border.color: "gray"
                                             border.width: 1
                                             radius: 4
@@ -385,7 +376,7 @@ ApplicationWindow {
                     anchors.fill: parent
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
-                    text: section === "true" ? "备份项" : "启动时备份项"
+                    text: section === "true" ? "启动时备份项" : "备份项"
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     font.bold: true
@@ -449,12 +440,8 @@ ApplicationWindow {
 
                     onTextChanged:  {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_operateName = text
-                                settings.backupItemManage(item)
-                            }
-                            settings.backupModel.forceLayout()
+                            settings.backupModel.get(listViewBackup.currentIndex).m_operateName = text
+                            //settings.backupModel.forceLayout()
                         }
                     }
                 }
@@ -493,12 +480,8 @@ ApplicationWindow {
 
                     onTextChanged: {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_sourceFile = text
-                                settings.backupItemManage(item)
-                            }
-                            settings.backupModel.forceLayout()
+                            settings.backupModel.get(listViewBackup.currentIndex).m_sourceFile = text
+                            //settings.backupModel.forceLayout()
                         }
                     }
                 }
@@ -536,12 +519,8 @@ ApplicationWindow {
                     }
                     onTextChanged: {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_destinationPath = text
-                                settings.backupItemManage(item)
-                            }
-                            settings.backupModel.forceLayout()
+                            settings.backupModel.get(listViewBackup.currentIndex).m_destinationPath = text
+                            //settings.backupModel.forceLayout()
                         }
                     }
                 }
@@ -553,10 +532,7 @@ ApplicationWindow {
                 spacing: 10
                 visible: {
                     if (listViewBackup.currentIndex !== -1) {
-                        var item = settings.backupModel.get(listViewBackup.currentIndex)
-                        if (item && item.m_errorMessage && item.m_errorMessage !== "") {
-                            return true
-                        }
+                        return settings.backupModel.get(listViewBackup.currentIndex).m_errorMessage !== "" ? true : false
                     }
                     return false
                 }
@@ -571,7 +547,7 @@ ApplicationWindow {
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
-                // 参数: 多行文本框
+                // 参数: 文本编辑框
                 TextField  {
                     id: textFieldErrorMessage
                     placeholderText: "例: 路径错误/文件(夹)无效"
@@ -592,12 +568,8 @@ ApplicationWindow {
                     }
                     onTextChanged: {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_errorMessage = text
-                                settings.backupItemManage(item)
-                            }
-                            settings.backupModel.forceLayout()
+                            settings.backupModel.get(listViewBackup.currentIndex).m_errorMessage = text
+                            //settings.backupModel.forceLayout()
                         }
                     }
                 }
@@ -625,11 +597,8 @@ ApplicationWindow {
                     }
                     onToggled: {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_startBackup = checked
-                            }
-                            settings.backupModel.forceLayout()
+                            settings.backupModel.get(listViewBackup.currentIndex).m_startBackup = checked
+                            //settings.backupModel.forceLayout()
                         }
                     }
                 }
@@ -657,10 +626,7 @@ ApplicationWindow {
                     }
                     onToggled: {
                         if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                item.m_setPermissions = checked
-                            }
+                            settings.backupModel.get(listViewBackup.currentIndex).m_setPermissions = checked
                         }
                     }
                 }
@@ -749,15 +715,11 @@ ApplicationWindow {
                         settings.backupModel.forceLayout(true)
                     }
 
-                    onPressed: {
-                        buttonSettingSaveBackground.color = "black"
-                    }
-                    onReleased: {
-                        buttonSettingSaveBackground.color = "white"
-                    }
                     background: Rectangle {
                                 id: buttonSettingSaveBackground
-                                color: buttonSettingSave.hovered ? "lightgray" : "white"  // 悬停时浅灰色，默认白色
+                                color: !buttonSettingSave.enabled ? "#aaaaaa" :
+                                       buttonSettingSave.pressed ? "black" :
+                                       buttonSettingSave.hovered ? "gray" : "white"
                                 border.color: "gray"
                                 border.width: 1
                                 radius: 4
@@ -782,12 +744,14 @@ ApplicationWindow {
                     onPressed: {
                         buttonSettingQuitBackground.color = "black"
                     }
-                    onReleased: {
-                        buttonSettingQuitBackground.color = "white"
-                    }
+//                    onReleased: {
+//                        buttonSettingQuitBackground.color = buttonSettingQuit.hovered ? "gray" : "white"
+//                    }
                     background: Rectangle {
                                 id: buttonSettingQuitBackground
-                                color: buttonSettingQuit.hovered ? "lightgray" : "white"  // 悬停时浅灰色，默认白色
+                                color: !buttonSettingQuit.enabled ? "#aaaaaa" :
+                                       buttonSettingQuit.pressed ? "black" :
+                                       buttonSettingQuit.hovered ? "gray" : "white"
                                 border.color: "gray"
                                 border.width: 1
                                 radius: 4

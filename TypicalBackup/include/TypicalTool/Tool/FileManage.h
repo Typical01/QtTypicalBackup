@@ -45,7 +45,8 @@ namespace Typical_Tool {
 		bool Exists(const Tstr& _TipsChar, const std::filesystem::path& _Path, bool _bShowRelease = false, bool _bFileTrue = true)
 		{
 			Tstr FileType;
-			if (std::filesystem::exists(_Path)) {
+			std::error_code ErrorCode;
+			if (std::filesystem::exists(_Path, ErrorCode)) {
 				if (std::filesystem::is_regular_file(_Path)) { // 检查路径是否是普通文件
 					FileType = TEXT("文件");
 				}
@@ -58,39 +59,43 @@ namespace Typical_Tool {
 
 				if (_bShowRelease) {
 					if (_bFileTrue) {
-						LogRelease(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("][") + FileType + TEXT("] 存在!"), LogTip);
+						LogRelease(LogErr, Printf(TEXT("%s: 路径[%s][%s] 存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					else {
-						LogRelease(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("][") + FileType + TEXT("] 存在!"), LogErr);
+						LogRelease(LogTip, Printf(TEXT("%s: 路径[%s][%s] 存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					return true;
 				}
 				else {
 					if (_bFileTrue) {
-						LogDebug(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("][") + FileType + TEXT("] 存在!"), LogTip);
+						LogDebug(LogErr, Printf(TEXT("%s: 路径[%s][%s] 存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					else {
-						LogDebug(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("][") + FileType + TEXT("] 存在!"), LogErr);
+						LogDebug(LogTip, Printf(TEXT("%s: 路径[%s][%s] 存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					return true;
 				}
 			}
 			else {
+				if (!ErrorCode.message().empty()) {
+					LogRelease(LogErr, Printf(TEXT("%s: 路径[%s] 异常[%s]!"), _TipsChar, _Path.PathToStr(), stow(ErrorCode.message().c_str())));
+				}
+
 				if (_bShowRelease) {
 					if (_bFileTrue) {
-						LogRelease(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("] 不存在!"), LogErr);
+						LogRelease(LogErr, Printf(TEXT("%s: 路径[%s][%s] 不存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					else {
-						LogRelease(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("] 不存在!"), LogTip);
+						LogRelease(LogTip, Printf(TEXT("%s: 路径[%s][%s] 不存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					return false;
 				}
 				else {
 					if (_bFileTrue) {
-						LogDebug(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("] 不存在!"), LogErr);
+						LogDebug(LogErr, Printf(TEXT("%s: 路径[%s][%s] 不存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					else {
-						LogDebug(_TipsChar + TEXT(":[") + _Path.PathToStr() + TEXT("] 不存在!"), LogTip);
+						LogDebug(LogTip, Printf(TEXT("%s: 路径[%s][%s] 不存在!"), _TipsChar, _Path.PathToStr(), FileType));
 					}
 					return false;
 				}

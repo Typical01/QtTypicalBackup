@@ -57,7 +57,7 @@ void BackupModel::sort()
 {
     std::sort(m_data.begin(), m_data.end());
     std::partition(m_data.begin(), m_data.end(), [](Backup* backup) {
-        return !backup->getStartBackup();
+        return backup->getStartBackup();
         }
     );
 }

@@ -306,7 +306,7 @@ void QtTypicalTool::Settings::offLoadEngine()
     }
 }
 
-void QtTypicalTool::Settings::backupItemManage(Backup* bakcup)
+void QtTypicalTool::Settings::backupItemManage(Backup* bakcup, bool isAutoStartingItem)
 {
     setIsClickSaveButton(false);
     logDebug(QString("Settings::backupItemManage: 备份项处理 开始!"));
@@ -345,9 +345,9 @@ void QtTypicalTool::Settings::backupItemManage(Backup* bakcup)
                 backupItem->setErrorMessage("");
             }
         }
-        if (sourceFileList.isEmpty()) {
+        if (sourceFileList.isEmpty() && sourceFile.isEmpty()) {
             QString errorMessage = backupItem->getErrorMessage();
-            backupItem->setErrorMessage(errorMessage + "|[源文件/夹]为空!");
+            backupItem->setErrorMessage(errorMessage + "|-> [源文件/夹]为空!");
         }
         backupItem->setSourceFile(sourceFile);
         backupItem->setSourceFileList(sourceFileList);
@@ -366,12 +366,25 @@ void QtTypicalTool::Settings::backupItemManage(Backup* bakcup)
                 backupItem->setErrorMessage("");
             }
         }
-        if (destinationPathList.isEmpty()) {
+        if (destinationPathList.isEmpty() && destinationPath.isEmpty()) {
             QString errorMessage = backupItem->getErrorMessage();
-            backupItem->setErrorMessage(errorMessage + "|[目的地路径]为空!");
+            backupItem->setErrorMessage(errorMessage + "|-> [目的地路径]为空!");
         }
         backupItem->setDestinationPath(destinationPath);
         backupItem->setDestinationPathList(destinationPathList);
+
+        if (isAutoStartingItem && backupItem->getStartBackup()) {
+            autoStartingBackupItem.append(backupItem);
+        }
+    }
+
+    if (isAutoStartingItem) {
+        logDebug(QString("Settings::backupItemManage: [启动时备份]项 备份开始!"));
+        for (auto autoStartingBackupItem : autoStartingBackupItem) {
+            logDebug(QString("Settings::backupItemManage: [启动时备份]项: [%1]").arg(autoStartingBackupItem->getOperateName()));
+            runBackupTask(autoStartingBackupItem);
+        }
+        logDebug(QString("Settings::backupItemManage: [启动时备份]项 备份结束!"));
     }
 
     logDebug(QString("Settings::backupItemManage: 备份项处理 结束!"));
@@ -380,7 +393,9 @@ void QtTypicalTool::Settings::backupItemManage(Backup* bakcup)
 
 bool QtTypicalTool::Settings::IsVaildFilePath(const QString& _FilePath)
 {
-    return std::filesystem::exists(std::filesystem::path(_FilePath.toStdString()));
+    std::error_code ec;
+    std::filesystem::path path(_FilePath.toStdWString());
+    return std::filesystem::exists(path, ec);
 }
 
 QStringList QtTypicalTool::Settings::pathManage(QString& path)
@@ -404,7 +419,7 @@ bool QtTypicalTool::Settings::filePathManage(const QString& path, QString& error
 {
     if (!IsVaildFilePath(path)) {
         logDebug(QString("Settings::filePathManage: 路径 [%1] 无效!").arg(path));
-        errorMessage.append(QString("|路径[%1] 无效!").arg(path));
+        errorMessage.append(QString("|-> 路径[%1] 无效!").arg(path));
         return false;
     }
     return true;
@@ -486,7 +501,7 @@ void QtTypicalTool::Settings::runBackupTask(Backup* backup)
 
             // 所有任务完成
             if (!bIsErrorMessage.load()) {
-                if (bAutoStartingToQuitGame) {
+                if (bAutoStartingToQuitGame && autoStartingBackupItem.isEmpty()) {
                     QCoreApplication::quit();
                 }
             }

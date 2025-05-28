@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
         QCoreApplication::applicationDirPath()); //保存当前程序目录
 
     SettingsInstance->loadData();
-    SettingsInstance->backupItemManage();
+    SettingsInstance->backupItemManage(nullptr, true);
     SettingsInstance->openMainWindow();
 
     return app->exec();

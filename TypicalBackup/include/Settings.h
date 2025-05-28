@@ -67,6 +67,7 @@ namespace QtTypicalTool {
         FileSystem fileSystem;
 
         BackupModel* backupModel;
+        QVector<Backup*> autoStartingBackupItem;
 
         std::atomic<bool> bIsErrorMessage = false; // 是否有错误
         bool bIsSelfAutoStarting = false; // 开机自启动
@@ -130,7 +131,7 @@ namespace QtTypicalTool {
         void offLoadEngine();
 
         //backup
-        void backupItemManage(Backup* bakcup = nullptr); //备份项处理
+        void backupItemManage(Backup* bakcup = nullptr, bool isAutoStartingItem = false); //备份项处理
         bool IsVaildFilePath(const QString& _FilePath);
         QStringList pathManage(QString& path); //路径处理
         bool filePathManage(const QString& path, QString& errorMessage); //文件路径处理

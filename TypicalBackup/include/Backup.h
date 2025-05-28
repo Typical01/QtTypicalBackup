@@ -43,10 +43,10 @@ public:
 
 	bool Backup::operator<(const Backup& other) const { 
 		if (!this->m_startBackup && other.m_startBackup) {
-			return true;
+			return false;
 		}
 		else if (this->m_startBackup && !other.m_startBackup) {
-			return false;
+			return true;
 		}
 		else {
 			return this->m_operateName < other.m_operateName;
