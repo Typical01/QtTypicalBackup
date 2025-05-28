@@ -7,12 +7,10 @@
 #include <QGuiApplication>
 #include <QCoreApplication>
 #include <QQmlContext>
-#include <QSystemTrayIcon>
 
 #include <QQmlApplicationEngine>
 
 #include <QObject>
-#include <QDebug>
 #include <QDir>
 #include <QQuickView>
 
@@ -21,20 +19,15 @@
 #include <QPushButton>
 #include <QAbstractListModel>
 
-#include <QFile>
-#include <QTextStream>
-#include <QDateTime>
-#include <QDebug>
-
 #include <QThread>
 #include <QMetaObject>
 
 
-
+#include <QtLog.h>
 #include <Backup.h>
-#include <Group.h>
+//#include <Group.h>
 #include <BackupModel.h>
-#include <GroupModel.h>
+//#include <GroupModel.h>
 
 
 #include <TypicalTool/Tool.h>
@@ -42,6 +35,7 @@
 
 
 using namespace tytl;
+using namespace qtytl;
 
 
 namespace QtTypicalTool {
@@ -76,12 +70,11 @@ namespace QtTypicalTool {
 
         std::atomic<bool> bIsErrorMessage = false; // 是否有错误
         bool bIsSelfAutoStarting = false; // 开机自启动
-        bool bIsClickSaveButton = false; // 是否点击了[保存]按钮
+        bool bIsClickSaveButton = true; // 是否点击了[保存]按钮
         bool bAutoStartingToQuitGame = false; // 自启动后退出
 
     public:
         void Initialize(QApplication* _application, const QString& _applicationName, const QString& _applicationDirPath);
-        static void customMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 
     public:
         Q_INVOKABLE BackupModel* getShellConfigModel() const { return backupModel; }
@@ -124,9 +117,9 @@ namespace QtTypicalTool {
         void loadData();
         void saveData();
         void updateConfig();
+        void logDebug(const QString& message);
 
         //其他
-        void logDebug(const QString& message);
         void help();
         void quit();
         void output();
@@ -137,7 +130,7 @@ namespace QtTypicalTool {
         void offLoadEngine();
 
         //backup
-        void backupItemManage(); //备份项处理
+        void backupItemManage(Backup* bakcup = nullptr); //备份项处理
         bool IsVaildFilePath(const QString& _FilePath);
         QStringList pathManage(QString& path); //路径处理
         bool filePathManage(const QString& path, QString& errorMessage); //文件路径处理

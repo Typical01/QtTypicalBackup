@@ -8,10 +8,12 @@ import com.example.settings 1.0
 
 Dialog {
     id: settingsDialog
-    width: 300
+    width: 350
     height: 200
     title: "设置"
     modal: Qt.ApplicationModal
+    font.family: "Microsoft YaHei"
+    font.pixelSize: 14
     standardButtons: Dialog.Ok | Dialog.Cancel
     parent: ApplicationWindow.contentItem  // 绑定到主窗口内容区
 

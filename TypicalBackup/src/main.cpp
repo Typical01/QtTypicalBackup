@@ -1,18 +1,10 @@
-#include <QGuiApplication>
-
-#include <QQmlApplicationEngine>
-#include <QQmlContext>
-
 #include <QIcon>
 #include <QUrl>
 
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 
-#include <QQuickView>
-
 #include "Settings.h"
-
 
 
 
@@ -99,6 +91,9 @@ int main(int argc, char* argv[])
     }
     SettingsInstance->Initialize(app, QCoreApplication::applicationName(), 
         QCoreApplication::applicationDirPath()); //保存当前程序目录
+
+    SettingsInstance->loadData();
+    SettingsInstance->backupItemManage();
     SettingsInstance->openMainWindow();
 
     return app->exec();

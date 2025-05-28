@@ -4,6 +4,12 @@
 #include <QVector>
 #include "Backup.h"
 
+#include <QtLog.h>
+
+using namespace qtytl;
+
+#include <TypicalTool/Tool.h>
+
 class BackupModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -14,11 +20,12 @@ public:
         OperateNameRole = Qt::UserRole + 1,
         SourceFileRole,
         DestinationPathRole,
+        ErrorMessageRole,
         StartBackupRole,
         SetPermissionsRole,
-        ProgressRole,
-        SourceFileListRole,
-        DestinationPathListRole
+        ProgressRole
+        /*SourceFileListRole,
+        DestinationPathListRole*/
     };
 
     explicit BackupModel(QObject* parent = nullptr);
@@ -37,7 +44,7 @@ public:
     void setData(const BackupModel& shellConfigModel) {
         m_data = shellConfigModel.m_data;
     }
-    const QVector<Backup*>& getData() {
+    QVector<Backup*> getData() {
         return m_data;
     }
     Q_INVOKABLE Backup* get(int index) const {
@@ -60,7 +67,7 @@ public:
     // 可选：添加数据的函数
     Q_INVOKABLE void addBackup(Backup* config);
     Q_INVOKABLE void addBackup(const QString& operateName, const QString& sourceFile, const QString& destinationPath,
-        const bool& startBackup, const bool& setPermissions, const int32_t& progress);
+        bool startBackup, bool setPermissions, float progress);
     Q_INVOKABLE bool removeBackup(int index);
 
 protected:

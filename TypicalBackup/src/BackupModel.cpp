@@ -4,7 +4,7 @@
 
 
 BackupModel::BackupModel(QObject* parent)
-    : QAbstractListModel(parent)
+    : QAbstractListModel(parent), m_data()
 {
 }
 
@@ -27,16 +27,18 @@ QVariant BackupModel::data(const QModelIndex& index, int role) const
         return backup->getSourceFile();
     case DestinationPathRole:
         return backup->getDestinationPath();
+    case ErrorMessageRole:
+        return backup->getErrorMessage();
     case StartBackupRole:
         return backup->getStartBackup();
     case SetPermissionsRole:
         return backup->getSetPermissions();
     case ProgressRole:
         return backup->getProgress();
-    case SourceFileListRole:
+    /*case SourceFileListRole:
         return QVariant::fromValue(backup->getSourceFileList());
     case DestinationPathListRole:
-        return QVariant::fromValue(backup->getDestinationPathList());
+        return QVariant::fromValue(backup->getDestinationPathList());*/
     default:
         return QVariant();
     }
@@ -68,10 +70,11 @@ void BackupModel::addBackup(Backup* backup)
     endInsertRows();
 }
 
-void BackupModel::addBackup(const QString& operateName, const QString& sourceFile, const QString& destinationPath,
-    const bool& startBackup, const bool& setPermissions, const int32_t& progress)
+void BackupModel::addBackup(const QString& operateName, const QString& sourceFile, 
+    const QString& destinationPath, bool startBackup, 
+    bool setPermissions, float progress)
 {
-    beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
+    beginInsertRows(QModelIndex(), m_data.count(), m_data.count());
     Backup* backup = new Backup(operateName, sourceFile, destinationPath, startBackup, setPermissions, progress);
     m_data.append(backup);
     sort();
@@ -94,10 +97,14 @@ bool BackupModel::removeBackup(int index) {
 QHash<int, QByteArray> BackupModel::roleNames() const
 {
     QHash<int, QByteArray> roles;
-    roles[OperateNameRole] = "operateName";
-    roles[SourceFileRole] = "sourceFile";
-    roles[DestinationPathRole] = "destinationPath";
-    roles[StartBackupRole] = "startBackup";
-    roles[SetPermissionsRole] = "setPermissions";
+    roles[OperateNameRole] = "m_operateName";
+    roles[SourceFileRole] = "m_sourceFile";
+    roles[DestinationPathRole] = "m_destinationPath";
+    roles[ErrorMessageRole] = "m_errorMessage";
+    roles[StartBackupRole] = "m_startBackup";
+    roles[SetPermissionsRole] = "m_setPermissions";
+    roles[ProgressRole] = "m_progress";
+    /*roles[SourceFileListRole] = "m_sourceFileList";
+    roles[DestinationPathListRole] = "m_destinationPathList";*/
     return roles;
 }

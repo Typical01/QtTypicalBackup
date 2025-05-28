@@ -785,8 +785,8 @@ namespace Typical_Tool
 	*/
 	TYPICALTOOL_API extern std::shared_ptr<Log> lgcr;
 
-#define LogDebug (*lgc)
-#define LogRelease (*lgcr)
+#define LogDebug (*tytl::lgc)
+#define LogRelease (*tytl::lgcr)
 }
 
 

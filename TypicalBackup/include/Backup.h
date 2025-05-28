@@ -4,11 +4,14 @@
 #include <QDebug>
 
 
+#include <QtLog.h>
+
+using namespace qtytl;
+
 
 class Backup  : public QObject
 {
 	Q_OBJECT
-
 
 	Q_PROPERTY(QString m_operateName READ getOperateName WRITE setOperateName NOTIFY operateNameChanged)
 	Q_PROPERTY(QString m_sourceFile READ getSourceFile WRITE setSourceFile NOTIFY sourceFileChanged)
@@ -16,9 +19,9 @@ class Backup  : public QObject
 	Q_PROPERTY(QString m_errorMessage READ getErrorMessage WRITE setErrorMessage NOTIFY errorMessageChanged)
 	Q_PROPERTY(bool m_startBackup READ getStartBackup WRITE setStartBackup NOTIFY startBackupChanged)
 	Q_PROPERTY(bool m_setPermissions READ getSetPermissions WRITE setSetPermissions NOTIFY setPermissionsChanged)
-	Q_PROPERTY(int32_t m_progress READ getProgress WRITE setProgress NOTIFY progressChanged)
-	Q_PROPERTY(QVector<QString> m_sourceFileList READ getSourceFileList WRITE setSourceFileList NOTIFY sourceFileListChanged)
-	Q_PROPERTY(QVector<QString> m_destinationPathList READ getDestinationPathList WRITE setDestinationPathList NOTIFY destinationPathListChanged)
+	Q_PROPERTY(float m_progress READ getProgress WRITE setProgress NOTIFY progressChanged)
+	/*Q_PROPERTY(QVector<QString> m_sourceFileList READ getSourceFileList WRITE setSourceFileList NOTIFY sourceFileListChanged)
+	Q_PROPERTY(QVector<QString> m_destinationPathList READ getDestinationPathList WRITE setDestinationPathList NOTIFY destinationPathListChanged)*/
 
 private:
 	QString m_operateName; //操作名
@@ -27,14 +30,14 @@ private:
 	QString m_errorMessage; //错误信息
 	bool m_startBackup; //启动时备份
 	bool m_setPermissions; //设置权限
-	int32_t m_progress; //进度
+	float m_progress; //进度
 	QVector<QString> m_sourceFileList;
 	QVector<QString> m_destinationPathList;
 
 public:
 	Backup(QObject *parent = nullptr);
 	Backup(const QString& operateName, const QString& sourceFile, const QString& destinationPath,
-		const bool& startBackup, const bool& setPermissions, const int32_t& progress);
+		bool startBackup, bool setPermissions, float progress);
 	Backup(const Backup& otherObject);
 	~Backup();
 
@@ -59,16 +62,16 @@ public:
 		}
 	}
 	Q_INVOKABLE QString getSourceFile() const { return m_sourceFile; }
-	Q_INVOKABLE void setSourceFile(const QString& shellOperate) {
-		if (m_sourceFile != shellOperate) {
-			m_sourceFile = shellOperate;
+	Q_INVOKABLE void setSourceFile(const QString& sourceFile) {
+		if (m_sourceFile != sourceFile) {
+			m_sourceFile = sourceFile;
 			emit sourceFileChanged();
 		}
 	}
 	Q_INVOKABLE QString getDestinationPath() const { return m_destinationPath; }
-	Q_INVOKABLE void setDestinationPath(const QString& file) {
-		if (m_destinationPath != file) {
-			m_destinationPath = file;
+	Q_INVOKABLE void setDestinationPath(const QString& destinationPath) {
+		if (m_destinationPath != destinationPath) {
+			m_destinationPath = destinationPath;
 			emit destinationPathChanged();
 		}
 	}
@@ -80,21 +83,21 @@ public:
 		}
 	}
 	Q_INVOKABLE bool getStartBackup() const { return m_startBackup; }
-	Q_INVOKABLE void setStartBackup(const bool& windowShow) {
-		if (m_startBackup != windowShow) {
-			m_startBackup = windowShow;
+	Q_INVOKABLE void setStartBackup(bool startBackup) {
+		if (m_startBackup != startBackup) {
+			m_startBackup = startBackup;
 			emit startBackupChanged();
 		}
 	}
 	Q_INVOKABLE bool getSetPermissions() const { return m_setPermissions; }
-	Q_INVOKABLE void setSetPermissions(const bool& menuButton) {
-		if (m_setPermissions != menuButton) {
-			m_setPermissions = menuButton;
+	Q_INVOKABLE void setSetPermissions(bool setPermissions) {
+		if (m_setPermissions != setPermissions) {
+			m_setPermissions = setPermissions;
 			emit setPermissionsChanged();
 		}
 	}
-	Q_INVOKABLE int32_t getProgress() const { return m_progress; }
-	Q_INVOKABLE void setProgress(const int32_t& progress) {
+	Q_INVOKABLE float getProgress() const { return m_progress; }
+	Q_INVOKABLE void setProgress(float progress) {
 		if (m_progress != progress) {
 			m_progress = progress;
 			emit progressChanged();
@@ -104,14 +107,14 @@ public:
 	Q_INVOKABLE void setSourceFileList(const QVector<QString>& sourceFileList) {
 		if (m_sourceFileList != sourceFileList) {
 			m_sourceFileList = sourceFileList;
-			emit sourceFileListChanged();
+			//emit sourceFileListChanged();
 		}
 	}
 	Q_INVOKABLE QVector<QString> getDestinationPathList() const { return m_destinationPathList; }
 	Q_INVOKABLE void setDestinationPathList(const QVector<QString>& destinationPathList) {
 		if (m_destinationPathList != destinationPathList) {
 			m_destinationPathList = destinationPathList;
-			emit destinationPathListChanged();
+			//emit destinationPathListChanged();
 		}
 	}
 
@@ -128,8 +131,8 @@ signals:
 	void startBackupChanged();
 	void setPermissionsChanged();
 	void progressChanged();
-	void sourceFileListChanged();
-	void destinationPathListChanged();
+	/*void sourceFileListChanged();
+	void destinationPathListChanged();*/
 };
 
 Q_DECLARE_METATYPE(Backup*)
