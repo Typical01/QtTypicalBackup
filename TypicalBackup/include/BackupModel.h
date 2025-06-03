@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QAbstractListModel>
 #include <QVector>
@@ -20,10 +20,12 @@ public:
         OperateNameRole = Qt::UserRole + 1,
         SourceFileRole,
         DestinationPathRole,
-        ErrorMessageRole,
+        SourceFileErrorRole,
+        DestinationPathErrorRole,
         StartBackupRole,
         SetPermissionsRole,
-        ProgressRole
+        ProgressRole,
+        ErrorMessageListRole
         /*SourceFileListRole,
         DestinationPathListRole*/
     };

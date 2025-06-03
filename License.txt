@@ -1,5 +1,5 @@
-=======================
-TypicalTool Software License
+﻿=======================
+Typical_Tool Software License
 =======================
 
 本软件使用了 Qt 框架（LGPL v3 许可）。您可以从以下地址获取 Qt 的源代码：

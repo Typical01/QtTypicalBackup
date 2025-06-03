@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QDebug>  
@@ -21,14 +21,19 @@ public:
 };
 
 namespace QtTypicalTool {
+    static QFile logFile("./Log/log.txt");
+    static std::atomic<bool> bLogQuit = false;
+
+    static std::mutex g_mutex; // 全局互斥锁
     static void customMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
     {
-        static QFile file("./Log/log.txt");
-        if (!file.isOpen()) {
-            file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
+        std::lock_guard<std::mutex> lock(g_mutex); // 全局互斥锁
+
+        if (!logFile.isOpen()) {
+            logFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
         }
 
-        QTextStream out(&file);
+        QTextStream out(&logFile);
         QString timeStamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
         QString logLevel;
 
@@ -64,6 +69,18 @@ namespace QtTypicalTool {
         }
     }
 
+    static void clearLogFile()
+    {
+        std::lock_guard<std::mutex> lock(g_mutex); // 全局互斥锁
+
+        bLogQuit.store(true);
+
+        if (logFile.isOpen()) {
+            logFile.flush();
+            logFile.close();
+        }
+    }
+
     static void logDebug(const QString& message)
     {
         static bool initialze = false;
@@ -72,8 +89,8 @@ namespace QtTypicalTool {
             initialze = true;
         }
 
-        LogDebug(message.toStdString());
-        qDebug() << message;
+        //LogRelease(message.toStdString());
+        if (!bLogQuit) qDebug() << message;
     }
     static void logDebug(const std::string& message)
     {
@@ -83,8 +100,8 @@ namespace QtTypicalTool {
             initialze = true;
         }
 
-        LogDebug(message);
-        qDebug() << message.c_str();
+        //LogRelease(message);
+        if (!bLogQuit) qDebug() << message.c_str();
     }
     static void logDebug(const char* message)
     {
@@ -94,8 +111,8 @@ namespace QtTypicalTool {
             initialze = true;
         }
 
-        LogDebug(message);
-        qDebug() << message;
+        //LogRelease(message);
+        if (!bLogQuit) qDebug() << message;
     }
 }
 namespace qtytl = QtTypicalTool;

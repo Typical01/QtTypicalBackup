@@ -1,8 +1,9 @@
-#include <QIcon>
+﻿#include <QIcon>
 #include <QUrl>
 
 #include <QCommandLineParser>
 #include <QCommandLineOption>
+#include <QTextCodec>
 
 #include "Settings.h"
 
@@ -84,17 +85,32 @@ int main(int argc, char* argv[])
     QtTypicalTool::Settings* SettingsInstance = new QtTypicalTool::Settings();
 
     QCommandLineParser parser;
-    parser.process(QCoreApplication::arguments());
-    if (GetCommandLineArgument(parser, "-Auto")) {
-        qDebug() << "CommandLine: 已启用[开机自启动]";
+    parser.addOption(QCommandLineOption("AutoQuit", "Enable auto-start mode.")); // 定义 --Auto
+    parser.process(app->arguments());
+    if (GetCommandLineArgument(parser, "AutoQuit")) {
+        logDebug("CommandLine: 已启用[开机自启动]");
         SettingsInstance->bAutoStartingToQuitGame = true;
     }
+
     SettingsInstance->Initialize(app, QCoreApplication::applicationName(), 
         QCoreApplication::applicationDirPath()); //保存当前程序目录
 
     SettingsInstance->loadData();
-    SettingsInstance->backupItemManage(nullptr, true);
+    SettingsInstance->runBackupItemManage(nullptr, true);
+    SettingsInstance->output();
     SettingsInstance->openMainWindow();
+    //SettingsInstance->autoStartBackupItem();
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [SettingsInstance]() {
+
+        if (!SettingsInstance) return;
+
+        // 通知线程停止
+        //if (SettingsInstance->threadBackupItemManage) SettingsInstance->threadBackupItemManage->deleteLater();
+        //if (SettingsInstance->threadBackupTask) SettingsInstance->threadBackupTask->deleteLater();
+        // 等待线程完成
+        //thread->wait();
+        });
 
     return app->exec();
 }

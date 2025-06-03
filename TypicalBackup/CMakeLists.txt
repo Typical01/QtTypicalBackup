@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 project(TypicalBackup LANGUAGES CXX)
 
 include(qt.cmake)
@@ -74,6 +74,13 @@ target_compile_definitions(${PROJECT_NAME}
     PRIVATE
     #UN_EXPORTS
 )
+
+if (MSVC)
+    add_compile_options("/utf-8")
+else()
+    add_compile_options("-finput-charset=UTF-8" "-fexec-charset=UTF-8")
+endif()
+
 
 # 链接库文件
 target_link_libraries(${PROJECT_NAME}

@@ -1,4 +1,6 @@
-﻿import QtQuick 2.12
+﻿// -*- coding: utf-8 -*-
+
+import QtQuick 2.12
 import QtQuick.Controls 2.12  // 必须导入此模块
 import QtQuick.Layouts 1.12
 
@@ -14,13 +16,25 @@ ApplicationWindow {
     visible: true
     width: 500
     height: 800
-    // 设置最大尺寸
-    maximumWidth: 500
-    maximumHeight: 800
     // 可选：设置最小尺寸
-    minimumWidth: 500
-    minimumHeight: 800
+    font.family: "Microsoft YaHei"
+    minimumWidth: 260
+    minimumHeight: 400
     title: settings.applicationWindowTitleName
+
+
+    onClosing: {
+        // 执行必要的清理操作
+        console.log("窗口即将关闭，执行清理操作。");
+        settings.quit(); // 退出应用程序
+    }
+
+    // 在根元素或适当的作用域中定义
+    property alias g_currentBackupItem: currentBackupItem.item
+    QtObject {
+        id: currentBackupItem
+        property var item: null
+    }
 
     menuBar: MenuBar {
         font.family: "Microsoft YaHei"
@@ -90,6 +104,71 @@ ApplicationWindow {
         }
     }
 
+    Popup {
+        id: popupProgressMain
+        anchors.centerIn: parent
+        width: 400
+        height: 80
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+
+        Column {
+            anchors.fill: parent
+            spacing: 10
+            //padding: 10
+
+            Label {
+                id: lableMain
+                text: "处理中..."
+                font.pixelSize: 16
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            ProgressBar {
+                id: progressBarMain
+                width: parent.width
+                height: 30
+                //indeterminate: true  // 不确定进度模式
+                value: {
+                    lableMain.text = "处理中..."
+                    if (g_currentBackupItem) {
+                        return g_currentBackupItem.m_progress
+                    }
+                    return 0.00
+                }
+
+                // 当进度变化时检查是否完成
+                onValueChanged: {
+                    if (value >= 1.00) {
+                        Qt.callLater(function() {
+                            g_currentBackupItem.m_progress = 0.00
+                            popupProgressMain.close()
+                            // 这里添加任务完成后的处理逻辑
+                            console.log("popupProgressMain Task completed!")
+                        })
+                    }
+                    else if (value === 0.00) {
+                        popupProgressMain.close()
+                        console.log("popupProgressMain close!")
+                    }
+                }
+
+                contentItem: Rectangle {
+                    width: progressBarMain.width * progressBarMain.value
+                    height: 30
+                    color: "#05ff00"
+                    radius: 4
+                }
+
+                background: Rectangle {
+                    color: "#e0e0e0"
+                    radius: 4
+                }
+            }
+        }
+    }
+
     // Main
     ColumnLayout {
         anchors.fill: parent
@@ -102,6 +181,7 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight  // 靠右对齐
                 spacing: 10
                 Text {
                     Layout.fillWidth: true
@@ -122,7 +202,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 80
                     hoverEnabled: true  // 启用悬停检测
 
-                    onClicked: {
+                    onReleased: {
                         settings.logDebug("qml: Clicked: buttonBackupAdd")
 
                         settings.backupModel.addBackup(
@@ -131,7 +211,7 @@ ApplicationWindow {
                             "",
                             false,
                             false,
-                            -1
+                            0.0
                         )
 
                         settings.logDebug("qml: Clicked: buttonBackupAdd: 添加备份项")
@@ -160,7 +240,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 80
                     hoverEnabled: true  // 启用悬停检测
 
-                    onClicked: {
+                    onReleased: {
                         settings.logDebug("qml: Clicked: buttonBackupDel")
                         var tempIndex = listViewBackup.currentIndex
                         if (tempIndex === listViewBackup.model.getRowCount() - 1) {
@@ -212,31 +292,38 @@ ApplicationWindow {
 
                 Component.onCompleted: {
                     settings.logDebug("qml: BackupList: onCompleted")
+                    settings.autoStartBackupItem()
+
+                    // 延迟打开进度条，确保数据已加载
+                    Qt.callLater(function() {
+                        if (settings.bIsSelfAutoStarting && settings.bAutoStartingToQuitGame) {
+                            lableMain.text = "[启动备份项] 处理中..."
+                            popupProgressMain.open()
+                            settings.logDebug("qml: popupProgressMain: open (delayed)")
+                        }
+                        })
                 }
 
                 onCurrentIndexChanged: {
-                    //Qt.callLater(function() {
-                        var currentItem = listViewBackup.model.get(listViewBackup.currentIndex)
-                        if (currentItem) {
-                            textFieldOperateName.text = currentItem.m_operateName
-                            textFieldSourceFile.text = currentItem.m_sourceFile
-                            textFieldDestinationPath.text = currentItem.m_destinationPath
-                            textFieldErrorMessage.text = currentItem.m_errorMessage
-                            checkBoxStartBackup.checked = currentItem.m_startBackup
-                            checkBoxSetPermissions.checked = currentItem.m_setPermissions
-                            //settings.backupModel.forceLayout()
+                    g_currentBackupItem = listViewBackup.model.get(listViewBackup.currentIndex)
+                    if (g_currentBackupItem) {
+                        textFieldOperateName.text = g_currentBackupItem.m_operateName
+                        textFieldSourceFile.text = g_currentBackupItem.m_sourceFile
+                        textFieldDestinationPath.text = g_currentBackupItem.m_destinationPath
+                        checkBoxStartBackup.checked = g_currentBackupItem.m_startBackup
+                        checkBoxSetPermissions.checked = g_currentBackupItem.m_setPermissions
+                        //settings.backupModel.forceLayout()
 
-                            backup.visible = true
+                        backup.visible = true
 
-                        } else {
-                            backup.visible = false
-                        }
-                    //})
+                    } else {
+                        backup.visible = false
+                    }
                 }
 
                 delegate: Rectangle {
                     width: listViewBackup.width
-                    height: 46
+                    height: 38
                     color: mouseAreaListView.containsMouse ? "#ddf0ff" : ListView.isCurrentItem ? "#c1e3ff" : "white"
 
                     MouseArea {
@@ -246,15 +333,19 @@ ApplicationWindow {
                         anchors.left: parent.left
                         hoverEnabled: true
                         //propagateComposedEvents: true  // 允许事件传播
-                        onClicked: {
-                            settings.logDebug("qml: BackupList currentIndex: " + index)
-                            listViewBackup.currentIndex = index
-                            //mouse.accepted = false
+                        onReleased: {
+                            if (listViewBackup.currentIndex !== index) {
+                                settings.logDebug("qml: BackupList currentIndex: " + index)
+                                listViewBackup.currentIndex = index
+                                g_currentBackupItem = listViewBackup.model.get(listViewBackup.currentIndex)
+                                //mouse.accepted = false
+                            }
                         }
                     }
 
                     ColumnLayout {
                         width: listViewBackup.width
+                        spacing: 0
                         //Layout.fillWidth: true  // 添加此行
                         RowLayout {
                             width: listViewBackup.width
@@ -274,17 +365,27 @@ ApplicationWindow {
                                     font.bold: true
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
-
-                                    color: model.m_errorMessage !== "" ? "red" : "black"
+                                    color: "black"
                                 }
+                                Layout.alignment: Qt.AlignHCenter  // 水平居中
                                 font.bold: true
                                 width: 80
                                 height: 34
                                 enabled: {
-                                    if (settings.bIsClickSaveButton) {
-                                        if (model.m_errorMessage !== "") {
+                                    if (!settings.bIsClickSaveButton) {
+                                        // 有错误时: 无效
+                                        if (model.m_sourceFileError || model.m_destinationPathError) {
                                             return false
                                         }
+
+                                        //进度条约束
+                                        if (model.m_progress >= 1.00 || model.m_progress < 0.0) {
+                                            model.m_progress = 0.0
+                                            return true
+                                        }
+
+                                        if (model.m_progress === 0.0) return true
+
                                         return true
                                     }
                                     else {
@@ -293,9 +394,15 @@ ApplicationWindow {
                                 }
                                 hoverEnabled: true  // 启用悬停检测
 
-                                onClicked: {
+                                onReleased: {
                                     settings.logDebug("qml: Clicked: buttonBackupItem: 备份")
-                                    settings.runBackupTask(listViewBackup.model.get(index))
+
+                                    listViewBackup.currentIndex = index
+                                    g_currentBackupItem = listViewBackup.model.get(index)
+                                    if (g_currentBackupItem) {
+                                        popupProgressMain.open()
+                                        settings.runBackupTask(g_currentBackupItem)
+                                    }
                                 }
 
                                 background: Rectangle {
@@ -315,33 +422,46 @@ ApplicationWindow {
                                 //verticalAlignment: Text.AlignVCenter
                                 font.pointSize: 14
                                 font.family: "Microsoft YaHei"
-                                color: model.m_errorMessage !== "" ? "red" : "black"
+                                color: {
+                                    if (model.m_sourceFileError || model.m_destinationPathError) {
+                                        return "red"
+                                    }
+                                    else {
+                                        return "black"
+                                    }
+                                }
                             }
                         }
 
-                        ProgressBar {
-                            id: progressBarBackupItemTask
-                            Layout.fillWidth: true
-                            height: 4
-                            from: 0
-                            to: 100
-                            value: model.m_progress
-                            visible: model.m_progress >= 0.0 ? true : false
+//                        ProgressBar {
+//                            id: progressBarBackupItemTask
+//                            Layout.fillWidth: true
+//                            height: 4
+//                            from: 0
+//                            to: 100
+//                            value: model.m_progress
+//                            visible: {
+//                                if (model.m_progress >= 1.00 || model.m_progress <= 0.00) {
+//                                    model.m_progress = 0.0
+//                                    return false
+//                                }
+//                                return true
+//                            }
 
-                            background: Rectangle {
-                                color: "white"
-                                border.color: "gray"
-                                border.width: 1
-                                radius: 5
-                            }
+//                            background: Rectangle {
+//                                color: "white"
+//                                border.color: "gray"
+//                                border.width: 1
+//                                radius: 5
+//                            }
 
-                            contentItem: Rectangle {
-                                color: "#1ad800"
-                                radius: 5
-                                width: progressBarBackupItemTask.visualPosition * progressBarBackupItemTask.width
-                                height: progressBarBackupItemTask.height
-                            }
-                        }
+//                            contentItem: Rectangle {
+//                                color: "#1ad800"
+//                                radius: 5
+//                                width: progressBarBackupItemTask.visualPosition * progressBarBackupItemTask.width
+//                                height: progressBarBackupItemTask.height
+//                            }
+//                        }
 
                         // 分隔线
                         Rectangle {
@@ -410,167 +530,232 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignLeft  // 靠左对齐
                 spacing: 10
 
                 Text {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight
+                    //Layout.fillWidth: true
                     font.pointSize: 10
-                    text: "操作名:"
+                    text: " 操作名:"
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
                 // 文件: 文本编辑框
                 TextField {
                     id: textFieldOperateName
+                    Layout.fillWidth: true
                     placeholderText: "例: 备份D:/Test到F盘"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     Layout.preferredWidth: 400
                     selectByMouse: true  // 启用鼠标选区
                     text: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_operateName
-                            }
+                        if (g_currentBackupItem) {
+                            return g_currentBackupItem.m_operateName
                         }
                         return ""
                     }
 
                     onTextChanged:  {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_operateName = text
-                            //settings.backupModel.forceLayout()
+                        if (g_currentBackupItem) {
+                            g_currentBackupItem.m_operateName = text
+                            //settings.backupItemManage(currentItem)
                         }
+                        //settings.backupModel.forceLayout()
                     }
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignLeft  // 靠左对齐
+                spacing: 10
+
+
+                Text {
+                    //Layout.fillWidth: true
+                    font.bold: false
+                    font.pointSize: 10
+                    text: " 源文件(夹):"
+                    font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
+                    color: {
+                        if (g_currentBackupItem) {
+                            return g_currentBackupItem.m_sourceFileError ? "red" : "black"
+                        }
+                        return "black"
+                    }
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 140
+
+                    // 文件: 文本编辑框
+                    TextArea {
+                        id: textFieldSourceFile
+                        Layout.fillWidth: true
+                        placeholderText: "例: D:/Test"
+                        font.pointSize: 10
+                        font.family: "Microsoft YaHei"
+                        Layout.preferredHeight: 140
+                        selectByMouse: true  // 启用鼠标选区
+                        wrapMode: Text.Wrap  // 自动换行
+                        text: {
+                            if (g_currentBackupItem) {
+                                return g_currentBackupItem.m_sourceFile
+                            }
+                            return ""
+                        }
+                        color: {
+                            if (g_currentBackupItem) {
+                                return g_currentBackupItem.m_sourceFileError ? "red" : "black"
+                            }
+                            return "black"
+                        }
+
+                        onTextChanged: {
+                            if (g_currentBackupItem) {
+                                g_currentBackupItem.m_sourceFile = text
+                                //settings.backupItemManage(currentItem)
+                            }
+                            //settings.backupModel.forceLayout()
+                        }
+                    }
+
+                    background: Rectangle {
+                        Layout.fillWidth: true
+                        height: 140
+                        color: "white"
+                        border.color: "gray"
+                        border.width: 1
+                        radius: 0
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignLeft  // 靠左对齐
                 spacing: 10
 
                 Text {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight    
+                    //Layout.fillWidth: true
                     font.bold: false
+                    text: " 目的地路径:"
                     font.pointSize: 10
-                    text: "源文件(夹):"
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
+                    wrapMode: Text.Wrap  // 自动换行
+                    color: {
+                        if (g_currentBackupItem) {
+                            return g_currentBackupItem.m_destinationPathError ? "red" : "black"
+                        }
+                        return "black"
+                    }
                 }
 
-                // 文件: 文本编辑框
-                TextField {
-                    id: textFieldSourceFile
-                    placeholderText: "例: D:/Test"
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"
-                    Layout.preferredWidth: 400
-                    selectByMouse: true  // 启用鼠标选区
-                    text: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_sourceFile
-                            }
-                        }
-                        return ""
-                    }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 80
 
-                    onTextChanged: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_sourceFile = text
+                    // 参数: 文本编辑框
+                    TextArea {
+                        id: textFieldDestinationPath
+                        Layout.fillWidth: true
+                        placeholderText: "例: F:/"
+                        font.pointSize: 10
+                        Layout.preferredHeight: 80
+                        font.family: "Microsoft YaHei"
+                        Layout.preferredWidth: 400
+                        selectByMouse: true  // 启用鼠标选区
+                        text: {
+                            if (g_currentBackupItem) {
+                                return g_currentBackupItem.m_destinationPath
+                            }
+                            return ""
+                        }
+                        color: {
+                            if (g_currentBackupItem) {
+                                return g_currentBackupItem.m_destinationPathError ? "red" : "black"
+                            }
+                            return "black"
+                        }
+
+                        onTextChanged: {
+                            if (g_currentBackupItem) {
+                                g_currentBackupItem.m_destinationPath = text
+                                //settings.backupItemManage(currentItem)
+                            }
                             //settings.backupModel.forceLayout()
                         }
                     }
-                }
-            }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Text {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight    
-                    font.bold: false
-                    text: "目的地路径:"
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
-                }
-
-                // 参数: 文本编辑框
-                TextField {
-                    id: textFieldDestinationPath
-                    placeholderText: "例: F:/"
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"
-                    Layout.preferredWidth: 400
-                    selectByMouse: true  // 启用鼠标选区
-                    text: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_destinationPath
-                            }
-                        }
-                        return ""
-                    }
-                    onTextChanged: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_destinationPath = text
-                            //settings.backupModel.forceLayout()
-                        }
+                    background: Rectangle {
+                        Layout.fillWidth: true
+                        height: 80
+                        color: "white"
+                        border.color: "gray"
+                        border.width: 1
+                        radius: 0
                     }
                 }
             }
 
 
             RowLayout {
+                id: modelErrorMessage
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignLeft  // 靠左对齐
                 spacing: 10
                 visible: {
-                    if (listViewBackup.currentIndex !== -1) {
-                        return settings.backupModel.get(listViewBackup.currentIndex).m_errorMessage !== "" ? true : false
+                    if (g_currentBackupItem) {
+                        return g_currentBackupItem.m_errorMessageList.length <= 0 ? false : true
                     }
                     return false
                 }
 
                 Text {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight
+                    //Layout.fillWidth: true
                     font.bold: true
-                    text: "错误信息:"
+                    text: " 错误信息:"
                     font.pointSize: 10
                     color: "red"  // 设置输入文本的颜色为红色
                     font.family: "Microsoft YaHei"  // 直接使用系统已安装的字体名称
                 }
 
-                // 参数: 文本编辑框
-                TextField  {
-                    id: textFieldErrorMessage
-                    placeholderText: "例: 路径错误/文件(夹)无效"
-                    font.pointSize: 10
-                    font.family: "Microsoft YaHei"
-                    Layout.preferredWidth: 400
-                    font.bold: true
-                    selectByMouse: true  // 启用鼠标选区
-                    color: "red"  // 设置输入文本的颜色为红色
-                    text: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_errorMessage
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 120
+
+                    // 参数: 文本编辑框
+                    TextArea  {
+                        id: textFieldErrorMessage
+                        Layout.fillWidth: true
+                        placeholderText: "例: 路径错误/文件(夹)无效"
+                        font.pointSize: 10
+                        font.family: "Microsoft YaHei"
+                        font.bold: true
+                        selectByMouse: true  // 启用鼠标选区
+                        readOnly: true
+                        color: "red"  // 设置输入文本的颜色为红色
+                        text: {
+                            if (g_currentBackupItem) {
+                                var errorText = ""
+                                for (var i = 0; i < g_currentBackupItem.m_errorMessageList.length; ++i) {
+                                    errorText += g_currentBackupItem.m_errorMessageList[i] + "\n"
+                                }
+                                return errorText
                             }
+                            return ""
                         }
-                        return ""
                     }
-                    onTextChanged: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_errorMessage = text
-                            //settings.backupModel.forceLayout()
-                        }
+
+                    background: Rectangle {
+                        Layout.fillWidth: true
+                        height: 120
+                        color: "white"
+                        border.color: "gray"
+                        border.width: 1
+                        radius: 0
                     }
                 }
             }
@@ -582,22 +767,19 @@ ApplicationWindow {
                 // 启动时备份: 复选框
                 CheckBox {
                     id: checkBoxStartBackup
-                    Layout.leftMargin: 94  // 设置偏移量
-                    text: "启动时备份"
+                    Layout.alignment: Qt.AlignLeft  // 靠左对齐
+                    text: " 启动时备份"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     checked: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_startBackup
-                            }
+                        if (g_currentBackupItem) {
+                            return g_currentBackupItem.m_startBackup
                         }
                         return false
                     }
                     onToggled: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_startBackup = checked
+                        if (g_currentBackupItem) {
+                            g_currentBackupItem.m_startBackup = checked
                             //settings.backupModel.forceLayout()
                         }
                     }
@@ -611,22 +793,19 @@ ApplicationWindow {
                 // 设置权限: 复选框
                 CheckBox {
                     id: checkBoxSetPermissions
-                    Layout.leftMargin: 94  // 设置偏移量
-                    text: "设置权限"
+                    Layout.alignment: Qt.AlignLeft  // 靠左对齐
+                    text: " 设置权限(所有人)"
                     font.pointSize: 10
                     font.family: "Microsoft YaHei"
                     checked: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-                            if (item) {
-                                return item.m_setPermissions
-                            }
+                        if (g_currentBackupItem) {
+                            return g_currentBackupItem.m_setPermissions
                         }
                         return false
                     }
                     onToggled: {
-                        if (listViewBackup.currentIndex !== -1) {
-                            settings.backupModel.get(listViewBackup.currentIndex).m_setPermissions = checked
+                        if (g_currentBackupItem) {
+                            g_currentBackupItem.m_setPermissions = checked
                         }
                     }
                 }
@@ -636,24 +815,24 @@ ApplicationWindow {
 //                Layout.fillWidth: true
 
 //                ProgressBar {
-//                    id: progressBarBackupItemTask
+//                    id: progressBarMainTask
 //                    width: 300
 //                    from: 0
 //                    to: 100
 //                    value: {
 //                        if (listViewBackup.currentIndex !== -1) {
-//                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-//                            if (item) {
-//                                return item.m_progress
+//                            var currentItem = settings.backupModel.get(listViewBackup.currentIndex)
+//                            if (currentItem) {
+//                                return currentItem.m_progress
 //                            }
 //                        }
 //                        return -1
 //                    }
 //                    visible: {  // 当进度值为 -1 时隐藏进度条
 //                        if (listViewBackup.currentIndex !== -1) {
-//                            var item = settings.backupModel.get(listViewBackup.currentIndex)
-//                            if (item) {
-//                                return item.m_progress >= 0
+//                            var currentItem = settings.backupModel.get(listViewBackup.currentIndex)
+//                            if (currentItem) {
+//                                return currentItem.m_progress >= 0
 //                            }
 //                        }
 //                        return false
@@ -669,8 +848,8 @@ ApplicationWindow {
 //                    contentItem: Rectangle {
 //                        color: "green"
 //                        radius: 5
-//                        width: progressBarBackupItemTask.visualPosition * progressBarBackupItemTask.width
-//                        height: progressBarBackupItemTask.height
+//                        width: progressBarMainTask.visualPosition * progressBarMainTask.width
+//                        height: progressBarMainTask.height
 //                    }
 //                }
 //            }
@@ -689,7 +868,7 @@ ApplicationWindow {
             }
 
             RowLayout {
-                Layout.leftMargin: 240  // 设置偏移量
+                Layout.alignment: Qt.AlignRight  // 靠右对齐
                 Layout.fillWidth: true
                 Layout.fillHeight: true  // 添加此行
                 spacing: 5
@@ -702,17 +881,19 @@ ApplicationWindow {
                     font.bold: true
                     Layout.preferredHeight: 34
                     Layout.preferredWidth: 110
-                    enabled: settings.bIsClickSaveButton
+                    enabled: !settings.bIsClickSaveButton
                     hoverEnabled: true  // 启用悬停检测
 
-                    onClicked: {
+                    onReleased: {
+                        settings.bIsClickSaveButton = true
+
                         settings.logDebug("qml: Clicked: buttonSettingSave")
                         listViewBackup.currentIndex = -1
 
+                        settings.backupModel.forceLayout(true)
                         settings.updateConfig()
                         settings.saveData()
-                        settings.backupItemManage()
-                        settings.backupModel.forceLayout(true)
+                        settings.runBackupItemManage()
                     }
 
                     background: Rectangle {
@@ -736,7 +917,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 110
                     hoverEnabled: true  // 启用悬停检测
 
-                    onClicked: {
+                    onReleased: {
                         settings.logDebug("qml: Clicked: buttonSettingQuit")
                         settings.quit()
                     }

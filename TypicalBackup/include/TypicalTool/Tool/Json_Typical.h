@@ -1,4 +1,4 @@
-#ifndef _JSON_TYPICAL_H
+﻿#ifndef _JSON_TYPICAL_H
 #define _JSON_TYPICAL_H
 
 #include <TypicalTool/Tool/pch.h>

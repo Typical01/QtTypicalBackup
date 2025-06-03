@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QDebug>
@@ -16,21 +16,25 @@ class Backup  : public QObject
 	Q_PROPERTY(QString m_operateName READ getOperateName WRITE setOperateName NOTIFY operateNameChanged)
 	Q_PROPERTY(QString m_sourceFile READ getSourceFile WRITE setSourceFile NOTIFY sourceFileChanged)
 	Q_PROPERTY(QString m_destinationPath READ getDestinationPath WRITE setDestinationPath NOTIFY destinationPathChanged)
-	Q_PROPERTY(QString m_errorMessage READ getErrorMessage WRITE setErrorMessage NOTIFY errorMessageChanged)
+	Q_PROPERTY(bool m_sourceFileError READ getSourceFileError WRITE setSourceFileError NOTIFY sourceFileErrorChanged)
+	Q_PROPERTY(bool m_destinationPathError READ getDestinationPathError WRITE setDestinationPathError NOTIFY destinationPathErrorChanged)
 	Q_PROPERTY(bool m_startBackup READ getStartBackup WRITE setStartBackup NOTIFY startBackupChanged)
 	Q_PROPERTY(bool m_setPermissions READ getSetPermissions WRITE setSetPermissions NOTIFY setPermissionsChanged)
 	Q_PROPERTY(float m_progress READ getProgress WRITE setProgress NOTIFY progressChanged)
+	Q_PROPERTY(QVector<QString> m_errorMessageList READ getErrorMessageList WRITE setErrorMessageList NOTIFY errorMessageListChanged)
 	/*Q_PROPERTY(QVector<QString> m_sourceFileList READ getSourceFileList WRITE setSourceFileList NOTIFY sourceFileListChanged)
 	Q_PROPERTY(QVector<QString> m_destinationPathList READ getDestinationPathList WRITE setDestinationPathList NOTIFY destinationPathListChanged)*/
 
 private:
-	QString m_operateName; //操作名
-	QString m_sourceFile; //源文件/夹
-	QString m_destinationPath; //目的地路径
-	QString m_errorMessage; //错误信息
-	bool m_startBackup; //启动时备份
-	bool m_setPermissions; //设置权限
-	float m_progress; //进度
+	QString m_operateName;				//操作名
+	QString m_sourceFile;				//源文件/夹
+	QString m_destinationPath;			//目的地路径
+	bool m_sourceFileError;				//错误信息: 源文件/夹
+	bool m_destinationPathError;		//错误信息: 目的地路径
+	bool m_startBackup;					//启动时备份
+	bool m_setPermissions;				//设置权限
+	float m_progress;					//进度
+	QVector<QString> m_errorMessageList;
 	QVector<QString> m_sourceFileList;
 	QVector<QString> m_destinationPathList;
 
@@ -75,11 +79,18 @@ public:
 			emit destinationPathChanged();
 		}
 	}
-	Q_INVOKABLE QString getErrorMessage() const { return m_errorMessage; }
-	Q_INVOKABLE void setErrorMessage(const QString& errorMessage) {
-		if (m_errorMessage != errorMessage) {
-			m_errorMessage = errorMessage;
-			emit errorMessageChanged();
+	Q_INVOKABLE bool getSourceFileError() const { return m_sourceFileError; }
+	Q_INVOKABLE void setSourceFileError(bool sourceFileError) {
+		if (m_sourceFileError != sourceFileError) {
+			m_sourceFileError = sourceFileError;
+			emit sourceFileErrorChanged();
+		}
+	}
+	Q_INVOKABLE bool getDestinationPathError() const { return m_destinationPathError; }
+	Q_INVOKABLE void setDestinationPathError(bool destinationPathError) {
+		if (m_destinationPathError != destinationPathError) {
+			m_destinationPathError = destinationPathError;
+			emit destinationPathErrorChanged();
 		}
 	}
 	Q_INVOKABLE bool getStartBackup() const { return m_startBackup; }
@@ -101,6 +112,13 @@ public:
 		if (m_progress != progress) {
 			m_progress = progress;
 			emit progressChanged();
+		}
+	}
+	Q_INVOKABLE QVector<QString> getErrorMessageList() const { return m_errorMessageList; }
+	Q_INVOKABLE void setErrorMessageList(const QVector<QString>& errorMessageList) {
+		if (m_errorMessageList != errorMessageList) {
+			m_errorMessageList = errorMessageList;
+			emit errorMessageListChanged();
 		}
 	}
 	Q_INVOKABLE QVector<QString> getSourceFileList() const { return m_sourceFileList; }
@@ -127,10 +145,12 @@ signals:
 	void operateNameChanged();
 	void sourceFileChanged();
 	void destinationPathChanged();
-	void errorMessageChanged();
+	void sourceFileErrorChanged();
+	void destinationPathErrorChanged();
 	void startBackupChanged();
 	void setPermissionsChanged();
 	void progressChanged();
+	void errorMessageListChanged();
 	/*void sourceFileListChanged();
 	void destinationPathListChanged();*/
 };

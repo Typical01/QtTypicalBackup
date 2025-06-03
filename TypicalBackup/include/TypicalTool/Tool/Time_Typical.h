@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 //Timer.h 计时器
 #ifndef _TIMERS_H_

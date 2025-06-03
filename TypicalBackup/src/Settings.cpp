@@ -1,9 +1,9 @@
-#include "Settings.h"
+﻿#include "Settings.h"
 
 
 QtTypicalTool::Settings::Settings(QObject* parent)
     : QObject(parent), application(nullptr), qmlApplicationEngine(nullptr)
-    , backupModel(new BackupModel(this))
+    , backupModel(new BackupModel(this)), threadBackupItemManage(nullptr), threadBackupTask(nullptr)
 {
     onLoadEngine();
 }
@@ -21,12 +21,12 @@ void QtTypicalTool::Settings::Initialize(QApplication* _application, const QStri
 
     tytl::Win::WindowDPI();
 
-#ifdef _DEBUG
-    Log::SetDebug(true);
-#endif
-    Log::SetLogFileWrite(true);
-    Log::SetLogWriteLevel(LogTip);
-    LogDebug.SetLogFileWriteConfig(TEXT("TypicalBackup"), Printf(TEXT("%s/Log"), applicationDirPath.toStdString()));
+//#ifdef _DEBUG
+//    Log::SetDebug(true);
+//#endif
+//    Log::SetLogFileWrite(true);
+//    Log::SetLogWriteLevel(0);
+//    LogDebug.SetLogFileWriteConfig(TEXT("TypicalBackup"), Printf(TEXT("%s/Log"), applicationDirPath.toStdString()));
 
     qRegisterMetaType<Backup*>("Backup*");
     qRegisterMetaType<BackupModel*>("BackupModel*");
@@ -73,23 +73,6 @@ void QtTypicalTool::Settings::loadData()
         rootConfig[TEXT("基本设置")] = jsonBase;
 
         Json::Value jsonBackupItem;
-        for (int index = 0; index < 3; ++index) {
-            QString operateName = QString("Test%1").arg(index);
-            QString sourceFile = QString("%1").arg(index);
-            QString destinationPath = QString("%1").arg(index);
-            bool startBackup = false;
-            bool setPermissions = false;
-            float progress = -1.f;
-
-            Json::Value json;
-            json["源文件/夹"] = sourceFile.toStdString();
-            json["目标路径"] = destinationPath.toStdString();
-            json["开始备份"] = startBackup;
-            json["设置权限"] = setPermissions;
-            json["进度"] = progress;
-
-            jsonBackupItem[operateName.toStdString()] = json;
-        }
         rootConfig["备份项"] = jsonBackupItem;
 
         jsonManage.SetJsonValue(rootConfig);
@@ -129,8 +112,8 @@ void QtTypicalTool::Settings::loadData()
                 logDebug(QString("\t 开始备份  [%1]").arg(startBackup));
                 bool setPermissions = item.get("设置权限", false).asBool();
                 logDebug(QString("\t 设置权限  [%1]").arg(setPermissions));
-                float progress = item.get("进度", 0).asFloat();
-                logDebug(QString("\t 进度      [%1]").arg(progress));
+                /*float progress = item.get("进度", 0).asFloat();
+                logDebug(QString("\t 进度      [%1]").arg(progress));*/
 
                 // 创建 Backup 对象并设置属性
                 Backup* backup = new Backup();
@@ -139,7 +122,7 @@ void QtTypicalTool::Settings::loadData()
                 backup->setDestinationPath(destinationPath);
                 backup->setStartBackup(startBackup);
                 backup->setSetPermissions(setPermissions);
-                backup->setProgress(progress);
+                backup->setProgress(0.0f);
 
                 // 将 Backup 对象添加到模型中
                 backupModel->addBackup(backup);
@@ -166,7 +149,7 @@ void QtTypicalTool::Settings::saveData()
         QString destinationPath = backupModel->data(modelIndex, BackupModel::DestinationPathRole).toString();
         bool startBackup = backupModel->data(modelIndex, BackupModel::StartBackupRole).toBool();
         bool setPermissions = backupModel->data(modelIndex, BackupModel::SetPermissionsRole).toBool();
-        float progress = backupModel->data(modelIndex, BackupModel::ProgressRole).toFloat();
+        //float progress = backupModel->data(modelIndex, BackupModel::ProgressRole).toFloat();
         /*QVector<QVariant> sourceFileList = backupModel->data(modelIndex, BackupModel::SourceFileListRole).toList().toVector();
         QVector<QVariant> destinationPathList = backupModel->data(modelIndex, BackupModel::DestinationPathListRole).toList().toVector();*/
 
@@ -179,8 +162,8 @@ void QtTypicalTool::Settings::saveData()
         logDebug(QString("saveData: startBackup [%1]").arg(startBackup));
         json["设置权限"] = setPermissions;
         logDebug(QString("saveData: setPermissions [%1]").arg(setPermissions));
-        json["进度"] = progress;
-        logDebug(QString("saveData: progress [%1]").arg(progress));
+        /*json["进度"] = progress;
+        logDebug(QString("saveData: progress [%1]").arg(progress));*/
 
         //// 构建源文件列表的 JSON 数组
         //Json::Value jsonSourceFileList(Json::arrayValue);
@@ -227,7 +210,7 @@ void QtTypicalTool::Settings::updateConfig()
     if (bIsSelfAutoStarting != true) {
         logDebug(TEXT("Settings::UpdateConfig: 注册开机自启动[false]"));
 
-        if (Win::SetSelfStarting(applicationName.toStdString(), Printf(TEXT("\"%s\\%s.exe\""), 
+        if (Win::SetSelfStarting(applicationName.toStdString(), Printf(TEXT("\"%s\\%s.exe --AutoQuit\""), 
             QDir::toNativeSeparators(applicationDirPath).toStdString(), QDir::toNativeSeparators(applicationName).toStdString()).str(), TEXT(""), false)) {
             logDebug(TEXT("Settings::UpdateConfig: 注册开机自启动 删除成功!"));
         }
@@ -237,7 +220,7 @@ void QtTypicalTool::Settings::updateConfig()
     }
     else {
         logDebug(TEXT("Settings::UpdateConfig: 注册开机自启动[true]"));
-        if (Win::SetSelfStarting(applicationName.toStdString(), Printf(TEXT("\"%s\\%s.exe\""), 
+        if (Win::SetSelfStarting(applicationName.toStdString(), Printf(TEXT("\"%s\\%s.exe --AutoQuit\""), 
             QDir::toNativeSeparators(applicationDirPath).toStdString(), QDir::toNativeSeparators(applicationName).toStdString()).str(), TEXT(""), true)) {
             logDebug(TEXT("Settings::UpdateConfig: 注册开机自启动 添加成功!"));
         }
@@ -252,19 +235,35 @@ void QtTypicalTool::Settings::logDebug(const QString& message)
     qtytl::logDebug(message);
 }
 
-void QtTypicalTool::Settings::help() 
+void QtTypicalTool::Settings::help()
 {
-    QMessageBox::warning(nullptr, "TypicalBackup: 帮助",
+    QMessageBox::warning(nullptr, "TypicalBack: Help",
         "作者: Typical01\nGithub: https://github.com/Typical01\n\n本程序由Qt框架制作.\nQt: https://download.qt.io/archive/qt/5.12/5.12.0/single/qt-everywhere-src-5.12.0.zip");
 }
 
 void QtTypicalTool::Settings::quit()
 {
+    // 获取并销毁 QML 引擎
+    if (qmlApplicationEngine) {
+        qmlApplicationEngine->deleteLater();
+    }
+
+    // 关闭日志文件
+    //qtytl::clearLogFile();
+
     QCoreApplication::quit();
 }
 
 void QtTypicalTool::Settings::output()
 {
+    logDebug(TEXT("Settings::output: output"));
+    logDebug(QString(" applicationName:             [%1]").arg(applicationName));
+    logDebug(QString(" applicationDirPath:          [%1]").arg(applicationDirPath));
+    logDebug(QString(" applicationWindowTitleName:  [%1]").arg(applicationWindowTitleName));
+    logDebug(QString(" applicationConfigPath:       [%1]").arg(applicationConfigPath));
+    logDebug(QString(" bIsSelfAutoStarting:         [%1]").arg(bIsSelfAutoStarting));
+    logDebug(QString(" bIsClickSaveButton           [%1]").arg(bIsClickSaveButton));
+    logDebug(QString(" bAutoStartingToQuitGame:     [%1]").arg(bAutoStartingToQuitGame));
 }
 
 void QtTypicalTool::Settings::openMainWindow()
@@ -278,7 +277,7 @@ void QtTypicalTool::Settings::openMainWindow()
             delete qmlApplicationEngine;
             qmlApplicationEngine = nullptr;
 
-            QCoreApplication::quit();
+            quit();
         }
     }
 }
@@ -286,6 +285,7 @@ void QtTypicalTool::Settings::openMainWindow()
 void QtTypicalTool::Settings::onLoadEngine()
 {
     qmlApplicationEngine = new QQmlApplicationEngine();
+    //qmlApplicationEngine->setOutputWarningsToStandardError(true);
     qmlApplicationEngine->rootContext()->setContextProperty("settings", this);
     //qmlApplicationEngine->rootContext()->setContextProperty("backupModel", this->backupModel);
 }
@@ -306,15 +306,80 @@ void QtTypicalTool::Settings::offLoadEngine()
     }
 }
 
-void QtTypicalTool::Settings::backupItemManage(Backup* bakcup, bool isAutoStartingItem)
+void QtTypicalTool::Settings::autoStartBackupItem()
 {
-    setIsClickSaveButton(false);
+    setIsClickSaveButton(true);
+
+    // 创建并启动后台线程
+    QThread* thread = QThread::create([=]() {
+        if (bIsSelfAutoStarting && bAutoStartingToQuitGame) {
+            logDebug(QString("Settings::autoStartBackupItem: [启动时备份]项 备份开始!"));
+            for (auto autoStartingBackupItem : autoStartingBackup) {
+                logDebug(QString("Settings::autoStartBackupItem: [启动时备份]项: [%1]").arg(autoStartingBackupItem->getOperateName()));
+                operateCopyFile(autoStartingBackupItem);
+            }
+            autoStartingBackup.clear();
+            logDebug(QString("Settings::autoStartBackupItem: [启动时备份]项 备份结束!"));
+        }
+
+        // 确保在主线程更新模型
+        QMetaObject::invokeMethod(this, [this]() {
+            setIsClickSaveButton(false);
+
+            // 所有任务完成
+            if (!bIsErrorMessage.load()) {
+                if (bAutoStartingToQuitGame && autoStartingBackup.isEmpty()) {
+                    logDebug(QString("Settings::autoStartBackupItem: 自动退出!"));
+                    quit();
+                }
+            }
+            else {
+                if (bAutoStartingToQuitGame) {
+                    logDebug(QString("Settings::autoStartBackupItem: 自动退出: 有错误未处理!"));
+                    // 创建警告对话框
+                    QMessageBox msgBox;
+                    msgBox.setWindowTitle("警告");
+                    msgBox.setText("有错误未处理！");
+                    msgBox.setIcon(QMessageBox::Warning);
+
+                    // 添加“返回”按钮
+                    QPushButton* returnButton = msgBox.addButton("返回", QMessageBox::RejectRole);
+
+                    QPushButton* quitButton;
+                    if (bAutoStartingToQuitGame) {
+                        // 添加“确定退出”按钮
+                        quitButton = msgBox.addButton("确定退出", QMessageBox::AcceptRole);
+                        // 设置默认按钮（可选）
+                        msgBox.setDefaultButton(quitButton);
+                    }
+
+                    // 显示对话框并等待用户响应
+                    msgBox.exec();
+
+                    // 判断用户点击的按钮
+                    if (msgBox.clickedButton() == quitButton) {
+                        quit();
+                    }
+                }
+            }
+
+            }, Qt::QueuedConnection); // 如果跨线程，用 QueuedConnection
+        });
+
+    // 在线程完成后自动清理资源
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    thread->start();
+}
+
+void QtTypicalTool::Settings::backupItemManage(Backup* backup, bool _bIsAutoStartingItem)
+{
     logDebug(QString("Settings::backupItemManage: 备份项处理 开始!"));
+    //setIsClickSaveButton(true);
 
     auto model = backupModel->getData();
-    if (bakcup) {
+    if (backup) {
         model.clear();
-        model.append(bakcup);
+        model.append(backup);
     }
 
     for (auto backupItemIndex = 0; backupItemIndex < model.size(); backupItemIndex++) {
@@ -324,71 +389,66 @@ void QtTypicalTool::Settings::backupItemManage(Backup* bakcup, bool isAutoStarti
             continue;
         }
 
-        backupItem->setErrorMessage("");
-
         QString operateName = backupItem->getOperateName();
         QString sourceFile = backupItem->getSourceFile();
         QString destinationPath = backupItem->getDestinationPath();
         logDebug(QString("Settings::backupItemManage: 备份项[%1]").arg(operateName));
 
         QVector<QString> sourceFileList;
+        logDebug(QString("\t 备份项 [源文件/夹]: [%1][%2]").arg(operateName).arg(sourceFile));
         for (auto& path : pathManage(sourceFile)) { //将字符串路径分离出来
-            logDebug(QString("\t 备份项 [源文件/夹]: [%1][%2]").arg(operateName).arg(sourceFile));
-
-            QString errorMessage = backupItem->getErrorMessage();
-            if (!filePathManage(path, errorMessage)) {
-                backupItem->setErrorMessage(errorMessage);
+            if (!filePathManage(path)) {
+                backupItem->setSourceFileError(true);
+                logDebug(QString("Settings::backupItemManage: [源文件/夹]路径 [%1] 无效!").arg(path));
                 bIsErrorMessage.store(true);
             }
             else {
                 sourceFileList.append(path);
-                backupItem->setErrorMessage("");
+                backupItem->setSourceFileError(false);
             }
         }
         if (sourceFileList.isEmpty() && sourceFile.isEmpty()) {
-            QString errorMessage = backupItem->getErrorMessage();
-            backupItem->setErrorMessage(errorMessage + "|-> [源文件/夹]为空!");
+            backupItem->setSourceFileError(true);
+            logDebug("Settings::backupItemManage: [源文件/夹]为空!");
         }
         backupItem->setSourceFile(sourceFile);
         backupItem->setSourceFileList(sourceFileList);
 
         QVector<QString> destinationPathList;
+        logDebug(QString("\t 备份项 [目的地路径]: [%1][%2]").arg(operateName).arg(destinationPath));
         for (auto& path : pathManage(destinationPath)) { //将字符串路径分离出来
-            logDebug(QString("\t 备份项 [目的地路径]: [%1][%2]").arg(operateName).arg(destinationPath));
 
-            QString errorMessage = backupItem->getErrorMessage();
-            if (!filePathManage(path, errorMessage)) {
-                backupItem->setErrorMessage(errorMessage);
+            if (!filePathManage(path)) {
+                backupItem->setDestinationPathError(true);
+                logDebug(QString("Settings::backupItemManage: [目的地路径]路径 [%1] 无效!").arg(path));
                 bIsErrorMessage.store(true);
             }
             else {
                 destinationPathList.append(path);
-                backupItem->setErrorMessage("");
+                backupItem->setDestinationPathError(false);
             }
         }
         if (destinationPathList.isEmpty() && destinationPath.isEmpty()) {
-            QString errorMessage = backupItem->getErrorMessage();
-            backupItem->setErrorMessage(errorMessage + "|-> [目的地路径]为空!");
+            backupItem->setDestinationPathError(true);
+            logDebug("Settings::backupItemManage: [目的地路径]为空!");
         }
         backupItem->setDestinationPath(destinationPath);
         backupItem->setDestinationPathList(destinationPathList);
 
-        if (isAutoStartingItem && backupItem->getStartBackup()) {
-            autoStartingBackupItem.append(backupItem);
+        if (_bIsAutoStartingItem && bIsSelfAutoStarting && backupItem->getStartBackup()) {
+            autoStartingBackup.append(backupItem);
         }
-    }
 
-    if (isAutoStartingItem) {
-        logDebug(QString("Settings::backupItemManage: [启动时备份]项 备份开始!"));
-        for (auto autoStartingBackupItem : autoStartingBackupItem) {
-            logDebug(QString("Settings::backupItemManage: [启动时备份]项: [%1]").arg(autoStartingBackupItem->getOperateName()));
-            runBackupTask(autoStartingBackupItem);
-        }
-        logDebug(QString("Settings::backupItemManage: [启动时备份]项 备份结束!"));
+        backupItem->output();
+
+        backupItem->setProgress((float)backupItemIndex / model.size());
     }
 
     logDebug(QString("Settings::backupItemManage: 备份项处理 结束!"));
-    setIsClickSaveButton(true);
+
+    if (!_bIsAutoStartingItem) {
+        setIsClickSaveButton(false);
+    }
 }
 
 bool QtTypicalTool::Settings::IsVaildFilePath(const QString& _FilePath)
@@ -405,21 +465,27 @@ QStringList QtTypicalTool::Settings::pathManage(QString& path)
     }
 
     // 替换所有换行符为 '|'
-    path.replace("\r\n", "|"); // Windows 风格
-    path.replace("\r", "|");   // Mac 风格
-    path.replace("\n", "|");   // Unix/Linux 风格
+    //path.replace("\r\n", "|"); // Windows 风格
+    //path.replace("\r", "|");   // Mac 风格
+    //path.replace("\n", "|");   // Unix/Linux 风格
+    path.replace("\r\n", "\n"); // Windows 风格
+    path.replace("\r", "\n");   // Mac 风格
 
     // 分割字符串并移除空字符串
-    QStringList resultList = path.split("|", QString::SkipEmptyParts);
+    //QStringList resultList = path.split("|", QString::SkipEmptyParts);
+    QStringList resultList = path.split("\n", QString::SkipEmptyParts);
+
+    if (resultList.empty()) {
+        resultList.append(path);
+    }
 
     return resultList;
 }
 
-bool QtTypicalTool::Settings::filePathManage(const QString& path, QString& errorMessage)
+bool QtTypicalTool::Settings::filePathManage(const QString& path)
 {
     if (!IsVaildFilePath(path)) {
         logDebug(QString("Settings::filePathManage: 路径 [%1] 无效!").arg(path));
-        errorMessage.append(QString("|-> 路径[%1] 无效!").arg(path));
         return false;
     }
     return true;
@@ -428,110 +494,164 @@ bool QtTypicalTool::Settings::filePathManage(const QString& path, QString& error
 void QtTypicalTool::Settings::operateCopyFile(Backup* backup)
 {
     // 预先计算操作总数
-    const int32_t TotalFileOps = backup->getSourceFileList().size() * backup->getDestinationPathList().size();
-    int32_t CompletedOps = 0;
+    double TotalFileOps = backup->getSourceFileList().size() * backup->getDestinationPathList().size();
+    logDebug(QString("Settings::OperateCopyFile: SourceFileListSize[%1] DestinationPathListSize [%2]")
+        .arg(backup->getSourceFileList().size()).arg(backup->getDestinationPathList().size()));
+    double CompletedOps = 0.f;
 
-    backup->setProgress(0);
+    backup->setProgress(0.05f);
+
+    /*unsigned __int64 TotalFileOps = 0LL;
+    unsigned __int64 CompletedOps = 0LL;*/
+
+    /*QVector<unsigned __int64> sourceFileSizeList;
+    for (auto& backupItem : backup->getSourceFileList()) {
+        tytl::FileSystem FileSystemObj(backupItem.toStdString());
+        FileSystemObj.DirectoryIterator(true, TotalFileOps);
+        logDebug(QString("Settings::OperateCopyFile: 计算累计进度[%1]").arg(TotalFileOps));
+        sourceFileSizeList.append(CompletedOps);
+    }*/
+
+    //TotalFileOps = TotalFileOps * backup->getDestinationPathList().size();
 
     // 复制文件
+    logDebug(QString("Settings::OperateCopyFile: 源文件 [%1] -> 目的地 [%2]")
+        .arg(QString::fromStdString(backup->getSourceFile().toStdString()))
+        .arg(QString::fromStdString(backup->getDestinationPath().toStdString())));
+    logDebug(QString("Settings::OperateCopyFile: 总进度[%1]").arg(TotalFileOps));
+
+    int index = 0;
+    QVector<QString> ErrorMessageList;
     for (const auto& SourceFile : backup->getSourceFileList()) {
         for (const auto& DestPath : backup->getDestinationPathList()) {
+            logDebug(QString("复制 [%1] -> [%2]处理中...").arg(SourceFile).arg(DestPath));
             tytl::FileSystem fileSystem(SourceFile.toStdString());
-            logDebug(QString("Settings::OperateCopyFile: 源文件 [%1] -> 目的地 [%2]")
-                .arg(QString::fromStdString(backup->getSourceFile().toStdString()))
-                .arg(QString::fromStdString(backup->getDestinationPath().toStdString())));
+            QString ErrorMessage;
 
             // 修改权限
             if (backup->getSetPermissions()) {
-                bool permResult = fileSystem.SetPermissions(
-                    std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
-                    std::filesystem::perm_options::replace
-                );
-                if (!permResult) {
-                    qWarning() << QString("Settings::OperateCopyFile: 修改权限 [%1] 失败！").arg(backup->getOperateName());
+                if (!fileSystem.SetPermissions(std::filesystem::perms::owner_read | std::filesystem::perms::owner_write, 
+                    std::filesystem::perm_options::replace)) {
+                    logDebug(QString("Settings::OperateCopyFile: 修改权限 [%1] 失败！\n错误信息: [%2]").arg(SourceFile).arg(fileSystem.GetErrorMessage().c_str()));
+                    //ErrorMessage.append(QString(" 修改权限 [%1] 失败\n错误信息: [%2]\n").arg(backup->getOperateName()).arg(fileSystem.GetErrorMessage().c_str()));
+                    ErrorMessage.append(QString("修改权限 [%1] 失败!\n  错误信息: [%2]").arg(SourceFile).arg(fileSystem.GetErrorMessage().c_str()));
+                    bIsErrorMessage.store(true);
                 }
                 else {
-                    logDebug(QString("Settings::OperateCopyFile: 修改权限 [%1] 成功！").arg(backup->getOperateName()));
+                    logDebug(QString("Settings::OperateCopyFile: 修改权限 [%1] 成功！").arg(SourceFile));
+                }
+            }
+            //if (!ErrorMessage.isEmpty()) { ErrorMessageList.append(ErrorMessage); }
+
+            tytl::FileSystem DestinationPath(std::filesystem::path(DestPath.toStdString()) /= fileSystem.GetPath().filename());
+            tytl::FileSystemType FileType;
+            if (!DestinationPath.Exists("DestinationPath", DestinationPath.GetPath(), false, FileType)) {
+                if (!DestinationPath.CreateDirectorys()) {
+                    ErrorMessage.append(QString("创建文件夹 [%1] 失败!\n  错误信息: [%2]").arg(DestPath).arg(fileSystem.GetErrorMessage().c_str()));
+                }
+                else {
+                    logDebug(QString("创建文件夹 [%1] 成功!").arg(DestPath));
                 }
             }
 
             // 执行复制操作
-            if (!fileSystem.Copy(DestPath.toStdString())) {
-                QString errorMsg = backup->getErrorMessage() + QString::fromStdString(fileSystem.GetErrorMessage());
-                qWarning() << QString("Settings::OperateCopyFile: 错误信息 [%1]！").arg(errorMsg);
-                qWarning() << QString("Settings::OperateCopyFile: 复制失败: [%1] -> [%2]")
+            if (!fileSystem.Copy(DestinationPath.GetPath().PathToStr(),
+                //std::filesystem::copy_options::overwrite_existing |
+                std::filesystem::copy_options::update_existing |
+                std::filesystem::copy_options::recursive)) {
+                logDebug(QString("Settings::OperateCopyFile: 复制失败: [%1] -> [%2]")
                     .arg(QString::fromStdString(backup->getSourceFile().toStdString()))
-                    .arg(QString::fromStdString(backup->getDestinationPath().toStdString()));
+                    .arg(QString::fromStdString(backup->getDestinationPath().toStdString())));
+                logDebug(QString("Settings::OperateCopyFile: 错误信息 [%1]！").arg(fileSystem.GetErrorMessage().c_str()));
+                ErrorMessage.append(QString("复制 [%1]->[%2] 失败!\n  错误信息: [%3]").arg(SourceFile).arg(DestPath).arg(fileSystem.GetErrorMessage().c_str()));
 
                 // 添加错误信息
-                backup->setErrorMessage(errorMsg);
                 bIsErrorMessage.store(true);
             }
-
-            if (!bIsErrorMessage.load()) {
-                backup->setErrorMessage("");
+            else {
+                logDebug(QString("Settings::OperateCopyFile: 复制成功: [%1] -> [%2]")
+                    .arg(QString::fromStdString(backup->getSourceFile().toStdString()))
+                    .arg(QString::fromStdString(backup->getDestinationPath().toStdString())));
             }
 
-            logDebug(QString("Settings::OperateCopyFile: 复制成功: [%1] -> [%2]")
-                .arg(QString::fromStdString(backup->getSourceFile().toStdString()))
-                .arg(QString::fromStdString(backup->getDestinationPath().toStdString())));
+            if (!ErrorMessage.isEmpty()) { ErrorMessageList.append(ErrorMessage); }
+
+            if (!bIsErrorMessage.load()) {
+            }
 
             // 更新进度
-            backup->setProgress(++CompletedOps / TotalFileOps);
+            //CompletedOps += sourceFileSizeList[index];
+            backup->setProgress(CompletedOps / TotalFileOps);
+            CompletedOps++;
         }
+
+        logDebug(QString("Settings::OperateCopyFile: index[%1]").arg(index));
+        index++;
     }
-    backup->setProgress(100);
-    backup->setProgress(-1);
+
+    backup->setErrorMessageList(ErrorMessageList);
 }
 
 void QtTypicalTool::Settings::groupManage()
 {
 }
 
-void QtTypicalTool::Settings::runBackupTask(Backup* backup)
+void QtTypicalTool::Settings::runBackupItemManage(Backup* backup, bool bIsAutoStartingItem)
 {
+    setIsClickSaveButton(true);
+
     // 创建并启动后台线程
-    logDebug(QString("Settings::runBackupTask: 备份开始 [%1]").arg(backup->getOperateName()));
-    QThread* thread = QThread::create([=]() {
-        operateCopyFile(backup);
+    if (backup) {
+        logDebug(QString("Settings::runBackupItemManage: 备份项处理 [%1]开始!").arg(backup->getOperateName()));
+    }
+    else {
+        logDebug(QString("Settings::runBackupItemManage: 备份项处理开始!"));
+    }
+
+    threadBackupItemManage = QThread::create([=]() {
+        backupItemManage(backup, bIsAutoStartingItem);
 
         // 任务完成通知
         QMetaObject::invokeMethod(this, [=]() {
-            logDebug(Printf(TEXT("USettingWidget::RunBackupTask: [%s]备份完成!"), backup->getOperateName().toStdString()).cstr());
-
-            // 所有任务完成
-            if (!bIsErrorMessage.load()) {
-                if (bAutoStartingToQuitGame && autoStartingBackupItem.isEmpty()) {
-                    QCoreApplication::quit();
-                }
+            if (backup) {
+                logDebug(Printf(TEXT("USettingWidget::runBackupItemManage: [%s]备份项处理完成!"), backup->getOperateName().toStdString()).cstr());
+                backup->setProgress(1.0f);
             }
             else {
-                // 创建警告对话框
-                QMessageBox msgBox;
-                msgBox.setWindowTitle("警告");
-                msgBox.setText("有错误未处理！");
-                msgBox.setIcon(QMessageBox::Warning);
-
-                // 添加“返回”按钮
-                QPushButton* returnButton = msgBox.addButton("返回", QMessageBox::RejectRole);
-                // 添加“确定退出”按钮
-                QPushButton* quitButton = msgBox.addButton("确定退出", QMessageBox::AcceptRole);
-
-                // 设置默认按钮（可选）
-                msgBox.setDefaultButton(quitButton);
-
-                // 显示对话框并等待用户响应
-                msgBox.exec();
-
-                // 判断用户点击的按钮
-                if (msgBox.clickedButton() == quitButton) {
-                    QCoreApplication::quit();
-                }
+                logDebug(QString("Settings::runBackupItemManage: 备份项处理完成!"));
             }
+            setIsClickSaveButton(false);
+
             }, Qt::QueuedConnection);
         });
 
     // 在线程完成后自动清理资源
-    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    thread->start();
+    connect(threadBackupItemManage, &QThread::finished, threadBackupItemManage, &QObject::deleteLater);
+    threadBackupItemManage->start();
+}
+
+void QtTypicalTool::Settings::runBackupTask(Backup* backup)
+{
+    setIsClickSaveButton(true);
+
+    // 创建并启动后台线程
+    logDebug(QString("Settings::runBackupTask: 备份开始 [%1]").arg(backup->getOperateName()));
+    threadBackupTask = QThread::create([=]() {
+        operateCopyFile(backup);
+
+        // 任务完成通知
+        QMetaObject::invokeMethod(this, [=]() {
+            logDebug(Printf(TEXT("USettingWidget::runBackupTask: [%s]备份完成!"), backup->getOperateName().toStdString()).cstr());
+
+            if (backup) {
+                backup->setProgress(1.0f);
+            }
+            setIsClickSaveButton(false);
+
+            }, Qt::QueuedConnection);
+        });
+
+    // 在线程完成后自动清理资源
+    connect(threadBackupTask, &QThread::finished, threadBackupTask, &QObject::deleteLater);
+    threadBackupTask->start();
 }

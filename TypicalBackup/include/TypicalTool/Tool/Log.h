@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifndef _LOG_H
 #define _LOG_H
@@ -13,16 +13,6 @@ namespace Typical_Tool
 {
 	using namespace StringManage;
 
-
-	template <typename T, typename = void>
-	struct is_streamable : std::false_type {};
-	template <typename T>
-	struct is_streamable<T, std::void_t<decltype(std::declval<std::ostream&>() << std::declval<T>())>> : std::true_type {};
-	template <typename T>
-	struct TypeCheck {
-		static_assert(is_streamable<T>::value, "Printf: 参数类型不支持流输出");
-	};
-
 	
 	class Printf {
 	private:
@@ -31,7 +21,7 @@ namespace Typical_Tool
 	public:
 		// 使用一个占位符（%s）来替换格式化字符串中的参数
 		template<typename... Args>
-		Printf(const Tstr& format, Args... args) 
+		Printf(const Tstr& format, Args... args)
 		{
 			std::vector<Tstr> placeholders = { format };
 			FormatStr = format_impl(placeholders, args...);
@@ -45,9 +35,6 @@ namespace Typical_Tool
 		template<typename T, typename... Args>
 		Tstr format_impl(std::vector<Tstr>& placeholders, T first, Args... args) 
 		{
-			//static_assert(is_streamable<T>::value, "Printf: 参数类型不支持流输出");
-			TypeCheck<T>();
-
 			Tstr formatted_string = placeholders[0];
 			size_t pos = formatted_string.find(TEXT("%s")); // 查找第一个占位符
 

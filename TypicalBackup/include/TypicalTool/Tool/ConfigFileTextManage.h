@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 //配置文件的字符处理
 #ifndef _CONFIGFILETEXTMANAGE_H

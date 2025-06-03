@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 //常用工具
 #ifndef _STRINGMANAGE_H

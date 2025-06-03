@@ -1,4 +1,4 @@
-#include "BackupModel.h"
+﻿#include "BackupModel.h"
 
 
 
@@ -27,14 +27,18 @@ QVariant BackupModel::data(const QModelIndex& index, int role) const
         return backup->getSourceFile();
     case DestinationPathRole:
         return backup->getDestinationPath();
-    case ErrorMessageRole:
-        return backup->getErrorMessage();
+    case SourceFileErrorRole:
+        return backup->getSourceFileError();
+    case DestinationPathErrorRole:
+        return backup->getDestinationPathError();
     case StartBackupRole:
         return backup->getStartBackup();
     case SetPermissionsRole:
         return backup->getSetPermissions();
     case ProgressRole:
         return backup->getProgress();
+    case ErrorMessageListRole:
+        return QVariant::fromValue(backup->getErrorMessageList());
     /*case SourceFileListRole:
         return QVariant::fromValue(backup->getSourceFileList());
     case DestinationPathListRole:
@@ -100,10 +104,12 @@ QHash<int, QByteArray> BackupModel::roleNames() const
     roles[OperateNameRole] = "m_operateName";
     roles[SourceFileRole] = "m_sourceFile";
     roles[DestinationPathRole] = "m_destinationPath";
-    roles[ErrorMessageRole] = "m_errorMessage";
+    roles[SourceFileErrorRole] = "m_sourceFileError";
+    roles[DestinationPathErrorRole] = "m_destinationPathError";
     roles[StartBackupRole] = "m_startBackup";
     roles[SetPermissionsRole] = "m_setPermissions";
     roles[ProgressRole] = "m_progress";
+    roles[ErrorMessageListRole] = "m_errorMessageList";
     /*roles[SourceFileListRole] = "m_sourceFileList";
     roles[DestinationPathListRole] = "m_destinationPathList";*/
     return roles;

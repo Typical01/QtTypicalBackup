@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifndef _TCHAR_H
 #define _TCHAR_H
@@ -12,12 +12,20 @@
 namespace Typical_Tool {
 
 #ifndef UN_TEXT
+
 #ifdef TEXT
 #undef TEXT
 #endif
 #endif
 
 #ifndef UNICODE
+
+	// ""
+#define TEXT(x) x
+#else
+
+#ifdef UTF8
+
 	// ""
 #define TEXT(x) x
 #else
@@ -25,7 +33,9 @@ namespace Typical_Tool {
 	// L""
 #define TEXT(x) L ## x
 #endif
+#endif
 
+#define NameToStr(param) TEXT(#param)
 
 
 #ifndef UNICODE
@@ -47,6 +57,24 @@ namespace Typical_Tool {
 #define Tfgets			std::fgets
 #else
 
+#ifdef UTF8
+#define Tchar			char
+#define Tstr			std::string
+#define ToStr			std::to_string
+#define PathToStr		std::filesystem::path::string
+#define Tstrlen			strlen
+#define Tostream		std::ostream
+#define Tiostream		std::iostream
+#define Tofstream		std::ofstream
+#define Tifstream		std::ifstream
+#define Tfstream		std::fstream
+#define Tistringstream	std::istringstream
+#define Tostringstream	std::ostringstream
+#define Tfopen_s		fopen_s
+#define Tfputs			std::fputs
+#define Tfgets			std::fgets
+
+#else
 #define Tchar			wchar_t
 #define Tstr			std::wstring
 #define ToStr			std::to_wstring
@@ -63,6 +91,7 @@ namespace Typical_Tool {
 #define Tfputs			std::fputws
 #define Tfgets			std::fgetws
 #endif
+#endif
 
 
 #ifndef _WINDOWS
@@ -76,10 +105,17 @@ namespace Typical_Tool {
 #else
 
 #ifndef UNICODE
+
+#define _LOGERRORINFO(x) (Tstr)TEXT("[") + TEXT("File: ") + __FILE__ + TEXT(" Line: ") + ToStr(__LINE__)+ TEXT("]") + x
+#else
+
+#ifdef UTF8
+
 #define _LOGERRORINFO(x) (Tstr)TEXT("[") + TEXT("File: ") + __FILE__ + TEXT(" Line: ") + ToStr(__LINE__)+ TEXT("]") + x
 #else
 
 #define _LOGERRORINFO(x) (Tstr)TEXT("[") + TEXT("File: ") + stow(__FILE__) + TEXT(" Line: ") + ToStr(__LINE__)+ TEXT("]") + x
+#endif
 #endif
 #endif
 

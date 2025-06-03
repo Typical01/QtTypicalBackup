@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifdef _WINDOWS
 
@@ -484,7 +484,7 @@ namespace Typical_Tool {
 			* 分辨率: 需要是系统中有的比例, 如: 1920 x 1080(16:9), 1280 x 720(16:9)
 		*/
 		template<class T = bool>
-		void SetDisplaySize(int32_t WidthValue, int32_t HeightValue, const Tstr& DisplayName = L"") {
+		void SetDisplaySize(int32_t WidthValue, int32_t HeightValue, const Tstr& DisplayName = TEXT("")) {
 			DISPLAY_DEVICE displayDevice;
 			displayDevice.cb = sizeof(DISPLAY_DEVICE);
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef _LANGUAGES_H
 #define _LANGUAGES_H
 
